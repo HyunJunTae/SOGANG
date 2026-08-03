@@ -1,3 +1,6 @@
 [submodule "3학년 1학기/AI SOGANG/AI_SOGANG_MiniProject"]
 	path = 3학년 1학기/AI SOGANG/AI_SOGANG_MiniProject
 	url = https://github.com/HyunJunTae/AI_SOGANG_MiniProject
+[submodule "3학년 1학기/SINE/SINE_web_project"]
+	path = 3학년 1학기/SINE/SINE_web_project
+	url = https://github.com/HyunJunTae/SINE_web_programming
