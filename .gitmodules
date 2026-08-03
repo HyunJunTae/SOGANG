@@ -4,3 +4,6 @@
 [submodule "3학년 1학기/SINE/SINE_web_project"]
 	path = 3학년 1학기/SINE/SINE_web_project
 	url = https://github.com/HyunJunTae/SINE_web_programming
+[submodule "3학년 1학기/캡디/캡디2/Capstone-Design-1"]
+	path = 3학년 1학기/캡디/캡디2/Capstone-Design-1
+	url = https://github.com/HyunJunTae/Capstone-Design-1
