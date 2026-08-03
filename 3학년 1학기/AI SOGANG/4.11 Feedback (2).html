@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>머신러닝 기초 피드백 - 수학부터 차원 축소까지</title>
+    <!-- Reveal.js CSS (4.5 템플릿 스타일 유지) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.3.1/reset.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.3.1/reveal.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.3.1/theme/simple.min.css" id="theme">
+    <!-- Pretendard Font -->
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.8/dist/web/static/pretendard-dynamic-subset.css" />
+    <!-- MathJax -->
+    <script type="text/x-mathjax-config">
+        MathJax.Hub.Config({
+            tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]}
+        });
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/MathJax.js?config=TeX-AMS_HTML"></script>
+    <style>
+        .reveal {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 32px;
+        }
+        .reveal h1, .reveal h2, .reveal h3, .reveal h4 {
+            font-family: 'Pretendard', sans-serif;
+            text-transform: none;
+            font-weight: 700;
+            margin-bottom: 30px;
+        }
+        .reveal h2 {
+            font-size: 1.6em;
+            color: #2c3e50;
+        }
+        .reveal p, .reveal li {
+            text-align: left;
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+        .reveal ul {
+            display: block;
+            margin: 0 auto;
+            width: 80%;
+        }
+        .reveal li {
+            font-size: 0.9em;
+            color: #34495e;
+        }
+        .image-placeholder {
+            width: 80%;
+            height: 200px;
+            background-color: #f8f9fa;
+            border: 2px dashed #bdc3c7;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin: 20px auto;
+            color: #7f8c8d;
+            font-size: 0.8em;
+            border-radius: 8px;
+            text-align: center;
+            padding: 10px;
+        }
+        .image-placeholder strong {
+            color: #e74c3c;
+            margin-bottom: 10px;
+        }
+        .highlight {
+            color: #e74c3c;
+            font-weight: 700;
+        }
+        .box {
+            background-color: #ecf0f1;
+            padding: 20px;
+            border-radius: 10px;
+            font-size: 0.85em;
+            margin-top: 20px;
+            border-left: 5px solid #3498db;
+        }
+        .answer {
+            color: #27ae60;
+            margin-top: 15px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="reveal">
+        <div class="slides">
+
+            <!-- Slide 1: Title -->
+            <section>
+                <h2>머신러닝의 뼈대</h2>
+                <p style="text-align: center; font-weight: bold; color: #3498db;">수학적 직관과 모델의 제약 (현업 활용기)</p>
+                <p style="text-align: center; font-size: 0.8em; color: #7f8c8d;">새싹반 피드백: 선형대수, 기하학, 그리고 차원축소</p>
+            </section>
+
+            <!-- Slide 2: 벡터와 내적 -->
+            <section>
+                <h2>1. 벡터와 내적의 실무 활용</h2>
+                <ul>
+                    <li><strong>현업의 핵심:</strong> 모든 데이터(텍스트, 이미지, 상품 정보)는 <span class="highlight">고차원 벡터</span>로 변환됩니다. (예: 임베딩)</li>
+                    <li><strong>내적(Inner Product)의 역할:</strong> 방향이 일치할수록 값이 커지는 특성을 이용해 데이터 간의 <span class="highlight">'유사도(Similarity)'</span>를 측정합니다.</li>
+                    <li><strong>실제 사례 (검색 및 추천):</strong> 챗봇, 구글 검색, 넷플릭스 등은 코사인 유사도(내적 기반)를 통해 가장 관련성 높은 문장이나 상품을 찾아냅니다.</li>
+                </ul>
+            </section>
+
+            <!-- Slide 3: Quiz 1 -->
+            <section>
+                <h2>Quiz 🤔 (추천 시스템 실전)</h2>
+                <p style="text-align: center; font-size: 0.9em; font-weight: bold; color: #2c3e50;">당신은 추천 알고리즘 엔지니어입니다.</p>
+                <div class="box">
+                    사용자 취향 벡터: $\mathbf{u} = [4, 1, 3]^T$<br><br>
+                    영화 B 피처 벡터: $\mathbf{m}_B = [5, 0, 1]^T$<br>
+                    영화 C 피처 벡터: $\mathbf{m}_C = [2, 2, 4]^T$<br><br>
+                    내적을 계산하여 <strong>무엇을 추천해야 할지</strong> 판단하세요!
+                </div>
+                <div class="fragment answer" style="margin-left: 10%;">
+                    <p>$\mathbf{u}^T \mathbf{m}_B = (4 \times 5) + (1 \times 0) + (3 \times 1) = \mathbf{23}$</p>
+                    <p>$\mathbf{u}^T \mathbf{m}_C = (4 \times 2) + (1 \times 2) + (3 \times 4) = \mathbf{22}$</p>
+                    <p>결론: 내적 값이 더 큰 <span class="highlight">영화 B 추천!</span></p>
+                </div>
+            </section>
+
+            <!-- Slide 4: Norm과 거리 -->
+            <section>
+                <h2>2. Norm과 거리 측정</h2>
+                <ul>
+                    <li>벡터의 크기(길이)를 나타내는 <strong>Norm</strong>은 머신러닝에서 <span class="highlight">'오차나 거리'</span>를 재는 기준이 됩니다.</li>
+                    <li><strong>실제 사례 (이상치 탐지와 물류):</strong>
+                        <ul>
+                            <li>이상 탐지(Anomaly Detection): 중심에서 너무 먼(L2 Norm 기반) 로그 데이터를 해킹으로 의심.</li>
+                            <li>배달 경로 최적화: 건물 블록을 따라가야 하는 도시에서는 직선거리(L2)보다 격자형 거리(L1 Norm/맨해튼 거리)가 현실적임.</li>
+                        </ul>
+                    </li>
+                </ul>
+            </section>
+
+            <!-- Slide 5: Quiz 2 -->
+            <section>
+                <h2>Quiz 🤔 (Norm 계산)</h2>
+                <div class="box">
+                    <p>2차원 공간의 데이터 점 $\mathbf{x} = [3, 4]^T$가 있습니다.</p>
+                    <p>1. 이 벡터의 <span class="highlight">L2 Norm</span>과 <span style="color:#e67e22; font-weight:bold;">L1 Norm</span>을 각각 계산하세요.</p>
+                    <p>2. 우리가 아는 물리적 <strong>'최단 거리(직선 거리)'</strong>에 적합한 Norm은 무엇일까요?</p>
+                </div>
+                <div class="fragment answer" style="margin-left: 10%;">
+                    <p>L2 Norm: $\sqrt{3^2 + 4^2} = \sqrt{25} = \mathbf{5}$ <span class="highlight">(물리적 최단 거리)</span></p>
+                    <p>L1 Norm: $|3| + |4| = \mathbf{7}$</p>
+                </div>
+            </section>
+            
+            <!-- Slide 6: 직교 투영과 PCA -->
+            <section>
+                <h2>3. 차원 축소와 투영의 위력 (PCA)</h2>
+                <ul>
+                    <li>이번 주에 배운 <strong>직교 투영(Orthogonal Projection)</strong>이 바로 PCA(주성분 분석)의 핵심 수학입니다.</li>
+                    <li><strong>현업 활용: 데이터 압축 및 시각화</strong><br>
+                    수만 개의 단어나 뇌파 신호 피처(차원)를 모델에 다 넣으면 연산이 불가능합니다.<br>
+                    PCA는 분산이 큰 <strong>핵심 축으로만 데이터를 직교 투영</strong>하여 노이즈는 버리고 엑기스만 2~3차원으로 압축합니다.</li>
+                </ul>
+                <div style="width: 80%; height: auto; margin: 15px auto;">
+                    <img src="https://ashutoshtripathi.com/wp-content/uploads/2019/07/pca_title-1.jpg" alt="PCA 투영 다이어그램" style="max-height: 250px; display: block; margin: 0 auto; border-radius: 8px;">
+                </div>
+            </section>
+
+            <!-- Slide 7: SVD -->
+            <section>
+                <h2>4. 행렬 분해의 마법 (SVD)</h2>
+                <ul>
+                    <li>특이값 분해(SVD, $A = U \Sigma V^T$)는 거대한 행렬을 의미 있는 성분들로 쪼개는 기술입니다.</li>
+                    <li><strong>현업 활용 1: 추천 시스템 (Latent Factor Model)</strong><br>넷플릭스 등에서 수천만 명의 빈칸 투성이인 평점 행렬을 쪼개어, 사람들의 특성과 영화의 <strong>숨겨진 장르 특성(Latent Factor)</strong>을 추출해 빈칸을 채워냅니다.</li>
+                    <li><strong>현업 활용 2: 검색 엔진 (LSA)</strong><br>문서-단어 행렬을 분해하여 단순히 일치하는 단어가 없어도 '맥락상' 비슷한 문서를 찾아줍니다.</li>
+                </ul>
+                <div style="text-align: center; margin: 30px auto;">
+                    <a href="https://www.youtube.com/watch?v=cq5qlYtnLoY" target="_blank" style="color: #e74c3c; font-weight: bold; font-size: 0.9em; text-decoration: underline;">
+                        🎥 [참고 영상] SVD 직관적 이해하기 (YouTube)
+                    </a>
+                </div>
+            </section>
+
+            <!-- Slide 8: 규제 (Regularization) -->
+            <section>
+                <h2>5. 규제 수학과 모델 제약</h2>
+                <ul>
+                    <li>현업에서는 무조건 복잡한 모델을 쓰면 <strong>과적합(Overfitting)</strong>으로 실전에서 엉망이 됩니다. Norm의 개념을 이용해 가중치 성장에 <strong>패널티(규제)</strong>를 부여합니다.</li>
+                    <li><strong><span class="highlight">L1 규제 (Lasso)</span></strong>: 중요하지 않은 변수 가중치를 0으로 만들어서 자동으로 <strong>'특성 선택(Feature Selection)'</strong>을 해줍니다. (예: 수천 개 유전자 중 관련성 높은 것만 필터링)</li>
+                    <li><strong><span style="color:#2980b9; font-weight:bold;">L2 규제 (Ridge)</span></strong>: 전체 파라미터를 고르게 낮추어 모델을 전반적으로 <strong>'안정화'</strong>시킵니다.</li>
+                </ul>
+            </section>
+
+            <!-- Slide 9: Quiz 3 (L1 vs L2) -->
+            <section>
+                <h2>Quiz 🤔 (규제의 선택)</h2>
+                <div class="box">
+                    <p>두 가지 가중치 모델이 있습니다. (학습 오차는 동일함)</p>
+                    <p>모델 X 가중치: $\mathbf{w}_X = [1, 1, 1]$ <br> 모델 Y 가중치: $\mathbf{w}_Y = [3, 0, 0]$</p>
+                    <p>1. 두 모델의 <strong>L1 합</strong>과 <strong>L2 제곱합</strong>을 각각 계산하세요.</p>
+                    <p>2. 모델에 <span class="highlight">L2 규제</span> 알고리즘을 썼을 때, <strong>$\mathbf{w}_X$를 선호하는 이유</strong>는?</p>
+                </div>
+                <div class="fragment answer" style="font-size: 0.85em; margin-left: 10%;">
+                    <p>L1 은 둘 다 3. 하지만 L2 제곱합은 $X = 1^2+1^2+1^2 = \mathbf{3}$, $Y = 3^2 = \mathbf{9}$</p>
+                    <p>정답: 한 변수에만 극단적으로 의존하는 Y는 L2 Penalty(9) 폭탄을 맞습니다. L2는 <strong>모든 데이터를 고르게 반영하는 안정적 모델(X)</strong>을 선호합니다!</p>
+                </div>
+            </section>
+
+            <!-- Slide 10: Next Week -->
+            <section>
+                <h2>6. 마무리 & Next Week</h2>
+                <ul>
+                    <li><strong>복습 포인트</strong><br> : 내적과 투영(PCA), 행렬 분해(SVD)가 실전에서 어떻게 추천과 압축으로 쓰이는지 복습하기!</li>
+                    <li><strong>다음 단계 예고</strong><br> : 최적화(Optimization) - 미분을 통해 모델이 길을 찾아가는 과정</li>
+                </ul>
+                <p style="text-align: center; margin-top: 50px; font-weight: bold; color: #2980b9;">질문이 있으신가요? 🙋‍♂️</p>
+            </section>
+
+        </div>
+    </div>
+
+    <!-- Reveal.js Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.3.1/reveal.js"></script>
+    <script>
+        Reveal.initialize({
+            hash: true,
+            controls: true,
+            progress: true,
+            center: true,
+            disableLayout: false,
+            transition: 'slide' // 부드러운 슬라이드 애니메이션
+        });
+    </script>
+</body>
+</html>

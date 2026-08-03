@@ -1,0 +1,1536 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ML Research Bridge - Week 1 Neural Network Basics</title>
+    <link rel="icon" href="data:," />
+    <style>
+:root {
+  --page-bg: #e9edf2;
+  --slide-bg: #ffffff;
+  --ink: #050505;
+  --muted: #6f6f6f;
+  --rule: #6179c8;
+  --blue: #5b63d9;
+  --blue-dark: #3844a8;
+  --light-line: #d7d7d7;
+  --soft-fill: #f4f5f7;
+  --equation-fill: #f1f3f8;
+  --font-sans: Arial, Helvetica, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+  --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--page-bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  letter-spacing: 0;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+button {
+  font: inherit;
+}
+
+.deck-toolbar {
+  width: min(1280px, calc(100vw - 32px));
+  height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #555;
+}
+
+.deck-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.brand-mark {
+  width: 5px;
+  height: 28px;
+  background: var(--blue);
+  display: inline-block;
+}
+
+.deck-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.deck-controls button {
+  border: 1px solid #cfd3dc;
+  background: #ffffff;
+  color: #222;
+  padding: 7px 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.deck-controls button:disabled {
+  cursor: not-allowed;
+  color: #9a9a9a;
+  background: #f6f6f6;
+}
+
+.slide-counter {
+  min-width: 44px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.deck {
+  width: min(1280px, calc(100vw - 32px));
+  padding-bottom: 36px;
+}
+
+.slide-shell {
+  display: grid;
+  gap: 12px;
+}
+
+.slide {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background: var(--slide-bg);
+  border: 1px solid #dadde3;
+  box-shadow: none;
+  padding: 28px 78px 68px 78px;
+}
+
+.slide::before {
+  content: "";
+  position: absolute;
+  top: 40px;
+  left: 78px;
+  right: 0;
+  height: 2px;
+  background: var(--rule);
+}
+
+.slide::after {
+  content: "";
+  position: absolute;
+  left: 78px;
+  right: 78px;
+  bottom: 64px;
+  height: 1px;
+  background: #eeeeee;
+}
+
+.slide-accent {
+  position: absolute;
+  top: 18px;
+  left: 32px;
+  width: 8px;
+  height: 82px;
+  background: var(--rule);
+}
+
+.slide-header {
+  position: relative;
+  z-index: 1;
+  margin-bottom: 30px;
+  padding-left: 0;
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  color: var(--blue);
+  font-size: 17px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+h1 {
+  margin: 0;
+  color: #3f3f3f;
+  font-size: clamp(36px, 3.55vw, 52px);
+  line-height: 1.08;
+  font-weight: 400;
+}
+
+.core-message {
+  width: min(1120px, 100%);
+  margin: 20px 0 0;
+  color: #111111;
+  font-size: clamp(22px, 1.95vw, 29px);
+  line-height: 1.32;
+  font-weight: 400;
+}
+
+.slide-grid {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1.38fr) minmax(320px, 0.62fr);
+  gap: 34px;
+  align-items: start;
+}
+
+.slide-grid.single {
+  grid-template-columns: 1fr;
+}
+
+.slide-grid.stack {
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+
+.slide-grid.table {
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+
+.content-card,
+.math-card,
+.code-card,
+.table-card {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+  box-shadow: none;
+}
+
+.content-card h3,
+.math-card h3,
+.code-card h3,
+.table-card h3 {
+  margin: 0 0 16px;
+  color: #111111;
+  font-size: clamp(23px, 1.9vw, 30px);
+  line-height: 1.16;
+  font-weight: 400;
+}
+
+.content-list {
+  margin: 0;
+  padding-left: 1.15em;
+  font-size: clamp(21px, 1.68vw, 27px);
+  line-height: 1.42;
+}
+
+.content-list.two-col {
+  columns: 2;
+  column-gap: 46px;
+  font-size: clamp(20px, 1.48vw, 24px);
+}
+
+.content-list li {
+  break-inside: avoid;
+  margin: 0 0 13px;
+  padding-left: 0.2em;
+}
+
+.content-list li::marker {
+  font-size: 0.9em;
+}
+
+.slide-grid.stack .content-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 42px;
+  padding-left: 1.1em;
+  font-size: clamp(19px, 1.42vw, 24px);
+}
+
+.slide-grid.stack .content-list li {
+  margin-bottom: 0;
+}
+
+.check-list {
+  list-style: disc;
+  margin: 0;
+  padding-left: 1.15em;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 34px;
+  font-size: clamp(19px, 1.48vw, 24px);
+  line-height: 1.35;
+}
+
+.check-list li {
+  display: list-item;
+  padding: 0;
+  background: transparent;
+  border: 0;
+}
+
+.check-list li::marker {
+  font-size: 0.85em;
+}
+
+.check-dot {
+  display: none;
+}
+
+.math-card,
+.code-card {
+  border-top: 2px solid var(--light-line);
+  padding-top: 18px;
+}
+
+.code-card pre {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.math-display {
+  margin: 0;
+  color: #111111;
+  background: var(--equation-fill);
+  border: 1px solid #d6dae5;
+  border-left: 5px solid var(--blue);
+  border-radius: 0;
+  padding: 18px 22px;
+  font-size: clamp(18px, 1.38vw, 24px);
+  line-height: 1.42;
+  overflow-x: auto;
+}
+
+.math-display mjx-container {
+  margin: 0 !important;
+  text-align: left !important;
+}
+
+.code-card pre {
+  color: #111111;
+  background: var(--equation-fill);
+  border: 1px solid #d6dae5;
+  border-left: 5px solid var(--blue);
+  border-radius: 0;
+  padding: 18px 22px;
+  font-family: var(--font-mono);
+  font-size: clamp(18px, 1.35vw, 23px);
+  line-height: 1.42;
+}
+
+.slide-grid.stack .math-display {
+  font-size: clamp(15px, 1.08vw, 19px);
+  line-height: 1.3;
+  padding: 14px 20px;
+}
+
+.slide-grid.stack .code-card pre {
+  font-size: clamp(15px, 1.05vw, 18px);
+  line-height: 1.28;
+  padding: 14px 20px;
+}
+
+code {
+  font-family: var(--font-mono);
+  background: transparent;
+  color: var(--blue-dark);
+  padding: 0;
+  border-radius: 0;
+  font-size: 0.94em;
+  font-weight: 700;
+}
+
+pre code {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  border-radius: 0;
+  font-size: 1em;
+  font-weight: 400;
+}
+
+.table-card {
+  border-top: 2px solid var(--light-line);
+  padding-top: 18px;
+}
+
+.table-card table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: clamp(18px, 1.25vw, 22px);
+  line-height: 1.32;
+}
+
+.slide-grid.table .table-card table {
+  font-size: clamp(14px, 1.02vw, 18px);
+}
+
+.slide-grid.table .table-card th,
+.slide-grid.table .table-card td {
+  padding: 7px 9px;
+}
+
+.table-card th,
+.table-card td {
+  border: 1px solid #bfbfbf;
+  padding: 10px 12px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.table-card th {
+  background: var(--soft-fill);
+  color: #111111;
+  font-weight: 700;
+}
+
+.slide-footer {
+  position: absolute;
+  left: 78px;
+  right: 78px;
+  bottom: 24px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  color: #777777;
+  font-size: 17px;
+  font-weight: 400;
+}
+
+.speaker-notes {
+  border: 1px solid #d8d8d8;
+  border-radius: 0;
+  background: #ffffff;
+  padding: 12px 16px;
+  box-shadow: none;
+}
+
+.speaker-notes summary {
+  cursor: pointer;
+  color: #333333;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.speaker-notes p {
+  margin: 10px 0 0;
+  color: #333333;
+  font-size: 16px;
+  line-height: 1.55;
+}
+
+@media (max-width: 920px) {
+  .deck-toolbar,
+  .deck {
+    width: min(100vw - 20px, 780px);
+  }
+
+  .slide {
+    padding: 24px 42px 42px;
+  }
+
+  .slide::before {
+    top: 36px;
+    left: 42px;
+  }
+
+  .slide-accent {
+    left: 22px;
+    top: 18px;
+    height: 54px;
+  }
+
+  .slide-grid,
+  .slide-grid.single,
+  .slide-grid.stack {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+
+  .content-list.two-col,
+  .slide-grid.stack .content-list,
+  .check-list {
+    columns: 1;
+    grid-template-columns: 1fr;
+  }
+
+  .slide-footer {
+    left: 42px;
+    right: 42px;
+  }
+}
+
+    </style>
+  </head>
+  <body>
+    <header class="deck-toolbar" aria-label="Slide navigation">
+      <div class="deck-brand">
+        <span class="brand-mark"></span>
+        <span>ML Research Bridge - Week 1 Prototype</span>
+      </div>
+      <nav class="deck-controls">
+        <button id="prevSlide" type="button" aria-label="Previous slide">Prev</button>
+        <span id="slideCounter" class="slide-counter">1 / 64</span>
+        <button id="nextSlide" type="button" aria-label="Next slide">Next</button>
+      </nav>
+    </header>
+
+    <main id="deck" class="deck" aria-live="polite"></main>
+
+    <script>
+      window.MathJax = {
+        tex: {
+          inlineMath: [["\\(", "\\)"]],
+          displayMath: [["\\[", "\\]"]],
+        },
+        svg: {
+          fontCache: "global",
+        },
+        startup: {
+          typeset: false,
+        },
+      };
+    </script>
+    <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+    <script>
+const list = (items, options = {}) => ({ type: "list", title: "", items, ...options });
+const checklist = (items) => ({ type: "checklist", title: "", items });
+const math = (title, body) => ({ type: "math", title, body });
+const code = (title, body) => ({ type: "code", title, body });
+const table = (title, headers, rows) => ({ type: "table", title, headers, rows });
+
+const slide = (number, title, message, blocks, notes = "", layout = "") => ({
+  eyebrow: `Slide ${number}`,
+  title,
+  message,
+  blocks,
+  notes,
+  layout,
+});
+
+const rawSlides = [
+  slide(1, "From Classical ML to Neural Networks",
+    "A neural network extends classical ML: `linear model + nonlinear representation learning + gradient-based learning`.",
+    [list([
+      "Starting point: logistic regression",
+      "Destination: ReLU MLP",
+      "Core question: why are linear models not enough?",
+      "Key proof: a deep network without activation collapses into one affine map.",
+      "Demo: compare logistic regression and ReLU MLP on `make_moons`",
+    ])],
+    "Start from logistic regression, then reinterpret it as the smallest useful neural-network-like structure."),
+
+  slide(2, "Where Week 1 Fits",
+    "Week 1 builds the grammar needed for RNNs, attention, Transformers, and paper reading.",
+    [list([
+      "Week 1: affine maps, MLPs, activations, loss, PyTorch loop",
+      "Week 2: gradients, backpropagation, optimizers",
+      "Week 3: RNN, LSTM, GRU",
+      "Week 4: attention and self-attention",
+      "Week 5: Transformers and paper reading",
+      "Common grammar: `layer -> representation -> logits -> loss -> experiment`",
+    ])],
+    "A Transformer is still a neural network with layers, tensor shapes, logits, and a loss."),
+
+  slide(3, "What Students Already Know",
+    "Today's material reorganizes classical ML knowledge students already have.",
+    [list([
+      "Data split: train / validation / test",
+      "Models: linear regression, logistic regression, tree, ensemble",
+      "Metrics: accuracy, precision, recall, F1, ROC-AUC",
+      "Representations: scaling, polynomial features, TF-IDF, PCA",
+      "Math: vector, matrix, dot product, gradient, probability",
+      "Concepts to connect today: affine map, hyperplane, activation, cross entropy",
+    ], { columns: 2 })],
+    "Emphasize that `Wx + b`, decision boundaries, and loss are familiar ideas inside larger models."),
+
+  slide(4, "Sentences Students Should Explain",
+    "The goal is structural explanation, not implementation memorization.",
+    [checklist([
+      "An affine map is `XW + b`, and the tensor shapes must match.",
+      "The logistic regression boundary is `w^T x + b = 0`.",
+      "Some datasets cannot be solved with a linear boundary.",
+      "A deep linear network without activation collapses into one affine map.",
+      "A ReLU MLP changes the hidden representation to create nonlinear boundaries.",
+      "Cross entropy takes logits and class-index targets to create a learning signal.",
+      "A PyTorch training loop repeats forward, loss, backward, and update.",
+    ])],
+    "Return to these sentences at the end of class."),
+
+  slide(5, "Machine Learning as Data, Model, and Learning",
+    "The classical ML frame of `data, model, learning` applies directly to neural networks.",
+    [
+      list([
+        "Data: inputs represented as numerical tensors",
+        "Model: a parameterized function that maps inputs to outputs",
+        "Learning: finding parameters that reduce the loss",
+        "Evaluation: computing metrics on data not used for training",
+      ]),
+      math("Equations and Shapes", String.raw`\begin{aligned}
+X &\in \mathbb{R}^{n \times d} && \text{n samples, d features} \\
+y &\in \{0,\ldots,C-1\}^{n} && \text{class labels} \\
+f_{\theta} &: \mathbb{R}^{d} \rightarrow \mathbb{R}^{C} && \text{one input maps to C logits} \\
+\theta^{*} &= \arg\min_{\theta}\; \mathcal{L}(f_{\theta}(X), y)
+\end{aligned}`),
+    ],
+    "The model can be simple logistic regression or a multi-layer network; the learning objective still reduces loss.",
+    "stack"),
+
+  slide(6, "Start with Tensor Shapes",
+    "Deep learning equations become teachable when every symbol has a shape.",
+    [
+      list([
+        "`n`: batch size or number of samples",
+        "`d`: input feature dimension",
+        "`h`: hidden dimension",
+        "`C`: number of classes",
+        "PyTorch usually puts the batch dimension first.",
+      ]),
+      math("Basic Notation", String.raw`\begin{aligned}
+X &\in \mathbb{R}^{n \times d} \\
+W &\in \mathbb{R}^{d \times k} \\
+b &\in \mathbb{R}^{k} \\
+Y &= XW + b \in \mathbb{R}^{n \times k}
+\end{aligned}`),
+    ],
+    "Shape discipline prevents many implementation errors.",
+    "stack"),
+
+  slide(7, "Affine Map: One Sample",
+    "A linear layer maps one feature vector to another feature vector through an affine map.",
+    [
+      list(["Input: `x in R^d`", "Output: `z in R^k`", "Weight: `W in R^{d x k}`", "Bias: `b in R^k`"]),
+      math("Step-by-Step", String.raw`\begin{aligned}
+x &= [x_1, x_2, \ldots, x_d] \in \mathbb{R}^{d} \\
+z_j &= x_1W_{1j} + x_2W_{2j} + \cdots + x_dW_{dj} + b_j \\
+z &= xW + b \in \mathbb{R}^{k} \\
+\mathbb{R}^{d} \times \mathbb{R}^{d \times k} + \mathbb{R}^{k}
+&\rightarrow \mathbb{R}^{k}
+\end{aligned}`),
+    ],
+    "Treat each column of W as the coefficients for one output unit.",
+    "stack"),
+
+  slide(8, "Affine Map: Batch Input",
+    "Training computes a whole batch at once, not one sample at a time.",
+    [
+      list(["`X in R^{n x d}`: n samples", "`W in R^{d x k}`: d inputs to k outputs", "`b in R^k`: bias per output dimension", "`Z in R^{n x k}`: batch output"]),
+      math("Batch Computation", String.raw`\begin{aligned}
+Z &= XW + b \\
+XW &: [n,d]@[d,k] = [n,k] \\
+b &: [k] \rightarrow [n,k]\quad\text{by broadcasting} \\
+Z &\in \mathbb{R}^{n \times k}
+\end{aligned}`),
+    ],
+    "Bias is added to every sample in the batch.",
+    "stack"),
+
+  slide(9, "Affine Map: PyTorch Layer",
+    "`nn.Linear` implements the same affine map with batch-first tensors.",
+    [code("PyTorch", `layer = nn.Linear(in_features=d, out_features=k)
+Z = layer(X)  # X: [n, d], Z: [n, k]`)],
+    "Connect this code directly to the previous shape equation.",
+    "stack"),
+
+  slide(9, "Logistic Regression as a Single Neuron",
+    "Binary logistic regression can be read as `affine score + sigmoid`.",
+    [
+      list(["Input: `x in R^d`", "Parameters: `w in R^d`, `b in R`", "Logit: `z = w^T x + b`", "Probability: `p = sigmoid(z)`", "Prediction: class 1 if `p >= 0.5`"]),
+      math("Forward Pass", String.raw`\begin{aligned}
+z &= w^{\top}x + b && \text{affine score, scalar} \\
+p(y=1\mid x) &= \sigma(z) \\
+\sigma(z) &= \frac{1}{1+\exp(-z)} \\
+\hat{y} &= \mathbf{1}[p \ge 0.5]
+\end{aligned}`),
+    ],
+    "The single-neuron phrase is a structural analogy, not a claim about biological neurons.",
+    "stack"),
+
+  slide(10, "Logistic Regression Batch Shape",
+    "In batch form, logistic regression has the same shape logic as a neural network layer.",
+    [
+      list(["`X: [n, d]`", "`w: [d]` or `W: [d, 1]`", "`b: [1]`", "`z: [n]` or `[n, 1]`", "`p: [n]` or `[n, 1]`"]),
+      math("Batch Version", String.raw`\begin{aligned}
+z &= Xw + b \\
+X &\in \mathbb{R}^{n \times d},\quad w \in \mathbb{R}^{d} \\
+Xw &\in \mathbb{R}^{n},\quad b \in \mathbb{R} \\
+z &\in \mathbb{R}^{n} \\
+p &= \sigma(z) \in \mathbb{R}^{n} \\
+\hat{y} &= \mathbf{1}[p \ge 0.5] \in \{0,1\}^{n}
+\end{aligned}`),
+    ],
+    "Mention the two common binary-classification conventions: one logit with BCEWithLogitsLoss or two logits with CrossEntropyLoss.",
+    "stack"),
+
+  slide(11, "Logistic Regression Boundary",
+    "Sigmoid is nonlinear, but the decision boundary is a linear hyperplane.",
+    [list(["Class 1 rule: `p >= 0.5`", "`sigmoid(z) = 0.5` exactly when `z = 0`", "Therefore the boundary is `w^T x + b = 0`", "Line in 2D, plane in 3D, hyperplane in higher dimensions"])],
+    "First state the geometric conclusion before doing algebra.",
+    "stack"),
+
+  slide(12, "Logistic Regression Boundary: Derivation",
+    "The threshold `p = 0.5` becomes the affine equation `w^T x + b = 0`.",
+    [math("Derivation", String.raw`\begin{aligned}
+p &= \sigma(w^{\top}x+b) \\
+\text{decision boundary:}\quad p &= 0.5 \\
+\sigma(z) &= 0.5 \\
+\frac{1}{1+\exp(-z)} &= 0.5 \\
+1+\exp(-z) &= 2 \\
+\exp(-z) &= 1 \\
+z &= 0 \\
+\therefore\quad w^{\top}x+b &= 0
+\end{aligned}`)],
+    "Slow down here; this corrects the common misconception that sigmoid creates a nonlinear boundary.",
+    "stack"),
+
+  slide(12, "When Linear Boundaries Work",
+    "Linear models are not bad models; they are strong baselines when the data geometry fits.",
+    [list([
+      "If the data is nearly linearly separable, logistic regression is often a good choice.",
+      "It trains quickly and is easy to interpret.",
+      "Coefficients show the direction of feature influence.",
+      "Simple baselines are essential in research comparisons.",
+    ])],
+    "Do not dismiss classical ML. A baseline is the reference point for any claimed improvement."),
+
+  slide(13, "When Linear Boundaries Fail",
+    "The problem may be model-class expressivity, not the optimizer.",
+    [list([
+      "XOR: no single line can separate the classes.",
+      "`make_moons`: the boundary must bend.",
+      "`make_circles`: the boundary must be a closed curve.",
+      "Logistic regression is structurally limited to a linear boundary.",
+    ])],
+    "Training longer cannot solve a task whose target boundary is outside the model class."),
+
+  slide(14, "The Fixed Demo Problem: make_moons",
+    "`make_moons` is a minimal visual experiment for linear-boundary failure and MLP expressivity.",
+    [
+      list(["Input: 2D points", "Output: binary class", "Geometry: two curved moons", "Baseline: logistic regression", "Target model: ReLU MLP", "Comparison: validation accuracy and decision boundary"]),
+      code("Dataset", `from sklearn.datasets import make_moons
+
+X, y = make_moons(
+    n_samples=300,
+    noise=0.20,
+    random_state=42,
+)`),
+    ],
+    "Use make_moons before MNIST because the boundary is directly visible.",
+    "stack"),
+
+  slide(15, "Feature Engineering",
+    "Classical ML often changes the input space manually so a linear model can work.",
+    [
+      list(["The original features may not be linearly separable.", "Humans design polynomial, interaction, TF-IDF, or PCA features.", "The model learns more easily in the transformed feature space.", "Performance depends heavily on representation quality."]),
+      math("Manual Representation", String.raw`\begin{aligned}
+x &= [x_1, x_2] \\
+\phi(x) &= [x_1, x_2, x_1^2, x_2^2, x_1x_2] \\
+\text{score} &= w^{\top}\phi(x)+b
+\end{aligned}`),
+    ],
+    "Feature engineering is not bad. Deep learning learns part of the transformation instead of fully hand-designing it.",
+    "stack"),
+
+  slide(16, "Representation Learning",
+    "An MLP learns hidden representations that are useful for the task.",
+    [
+      list(["A hidden layer converts inputs into intermediate features.", "Those features are adjusted to reduce the loss.", "The transformation `phi(x)` is learned by a parameterized function.", "The output layer predicts from the hidden representation."]),
+      math("Shape View", String.raw`\begin{aligned}
+X &\in \mathbb{R}^{n \times d} \\
+H &= g(XW_1+b_1) \in \mathbb{R}^{n \times h} \\
+Z &= HW_2+b_2 \in \mathbb{R}^{n \times C}
+\end{aligned}`),
+    ],
+    "Representation learning is constrained by architecture, data, loss, and regularization.",
+    "stack"),
+
+  slide(17, "Deep Linear Network",
+    "Stacking linear layers alone does not escape the limits of logistic regression.",
+    [
+      list(["The first layer maps input to a hidden vector.", "The second layer maps hidden vector to output.", "Without activation, the transformations combine into one affine map.", "The decision boundary is still linear."]),
+      math("Two Linear Layers", String.raw`\begin{aligned}
+X &\in \mathbb{R}^{n \times d} \\
+W_1 &\in \mathbb{R}^{d \times h},\quad b_1 \in \mathbb{R}^{h} \\
+W_2 &\in \mathbb{R}^{h \times C},\quad b_2 \in \mathbb{R}^{C} \\
+H &= XW_1+b_1 \in \mathbb{R}^{n \times h} \\
+Z &= HW_2+b_2 \in \mathbb{R}^{n \times C}
+\end{aligned}`),
+    ],
+    "Separate depth from nonlinearity. Depth alone is not enough.",
+    "stack"),
+
+  slide(18, "Deep Linear Collapse: Two Layers",
+    "A two-layer network without activation can be rewritten exactly as one affine map.",
+    [math("Derivation", String.raw`\begin{aligned}
+H &= XW_1+b_1 \\
+Z &= HW_2+b_2 \\
+Z &= (XW_1+b_1)W_2+b_2 \\
+Z &= X(W_1W_2)+b_1W_2+b_2 \\
+W_* &= W_1W_2 \in \mathbb{R}^{d \times C} \\
+b_* &= b_1W_2+b_2 \in \mathbb{R}^{C} \\
+\therefore\quad Z &= XW_*+b_*
+\end{aligned}`)],
+    "Work through the algebra and the shapes together.",
+    "stack"),
+
+  slide(19, "Deep Linear Collapse: Many Layers",
+    "Adding more layers does not change the conclusion if no activation is used.",
+    [
+      math("General Form", String.raw`\begin{aligned}
+H_1 &= XW_1+b_1 \\
+H_2 &= H_1W_2+b_2 \\
+&\vdots \\
+Z &= H_{L-1}W_L+b_L \\
+W_* &= W_1W_2\cdots W_L \\
+b_* &= b_1W_2\cdots W_L + b_2W_3\cdots W_L + \cdots + b_L \\
+\therefore\quad Z &= XW_*+b_*
+\end{aligned}`),
+      list(["Expressivity view: equivalent to one affine layer.", "Optimization dynamics view: still a meaningful research topic.", "Today's conclusion: nonlinear boundaries require activation."]),
+    ],
+    "Keep the focus on expressivity, not all possible uses of deep linear networks.",
+    "stack"),
+
+  slide(20, "What Activation Does",
+    "Activation inserts nonlinearity between layers and prevents collapse.",
+    [
+      list(["Activation changes each hidden-unit value through a nonlinear function.", "The full network no longer collapses into one affine map.", "ReLU is one of the simplest common activations.", "A ReLU MLP creates a piecewise linear nonlinear function."]),
+      math("ReLU", String.raw`\begin{aligned}
+\mathrm{ReLU}(t) &= \max(0,t) \\
+H &= \mathrm{ReLU}(XW_1+b_1) \\
+Z &= HW_2+b_2 \\
+\mathrm{ReLU}(a+b) &\ne \mathrm{ReLU}(a)+\mathrm{ReLU}(b)\quad\text{in general}
+\end{aligned}`),
+    ],
+    "ReLU is not curved; it is a bent line. Many ReLUs create many regions.",
+    "stack"),
+
+  slide(21, "ReLU MLP: One Hidden Layer",
+    "One hidden layer maps inputs into a hidden representation, then produces class logits.",
+    [math("Shapes", String.raw`\begin{aligned}
+X &\in \mathbb{R}^{n \times d} \\
+W_1 &\in \mathbb{R}^{d \times h},\quad b_1 \in \mathbb{R}^{h} \\
+W_2 &\in \mathbb{R}^{h \times C},\quad b_2 \in \mathbb{R}^{C} \\
+A_1 &= XW_1+b_1 \in \mathbb{R}^{n \times h} \\
+H_1 &= \mathrm{ReLU}(A_1) \in \mathbb{R}^{n \times h} \\
+Z &= H_1W_2+b_2 \in \mathbb{R}^{n \times C}
+\end{aligned}`)],
+    "`Z` is logits, not probabilities.",
+    "stack"),
+
+  slide(22, "ReLU MLP: make_moons Shapes",
+    "For the demo, each point has two input features and the model returns two class logits.",
+    [math("make_moons Example", String.raw`\begin{aligned}
+d &= 2,\quad h=16,\quad C=2 \\
+X &: [\mathrm{batch},2] \\
+A_1 &: [\mathrm{batch},16] \\
+H_1 &: [\mathrm{batch},16] \\
+Z &: [\mathrm{batch},2]
+\end{aligned}`)],
+    "Keep the batch dimension visible at every layer.",
+    "stack"),
+
+  slide(23, "ReLU MLP: Two Hidden Layers",
+    "An MLP repeats `Linear -> ReLU` blocks before the task-specific output layer.",
+    [math("Step-by-Step Shapes", String.raw`\begin{aligned}
+X &: [n,2] \\
+A_1 &= XW_1+b_1 && W_1:[2,16],\quad A_1:[n,16] \\
+H_1 &= \mathrm{ReLU}(A_1) && H_1:[n,16] \\
+A_2 &= H_1W_2+b_2 && W_2:[16,16],\quad A_2:[n,16] \\
+H_2 &= \mathrm{ReLU}(A_2) && H_2:[n,16] \\
+Z &= H_2W_3+b_3 && W_3:[16,2],\quad Z:[n,2]
+\end{aligned}`)],
+    "Use batch-shape notation consistently to avoid mixing conventions.",
+    "stack"),
+
+  slide(23, "How ReLU MLPs Create Nonlinear Boundaries",
+    "ReLU units divide the input space into regions; the output layer combines those regions into class scores.",
+    [
+      list(["Each hidden unit is active when `w_j^T x + b_j > 0`.", "Hidden layers partition the input space into regions.", "The output layer combines activation patterns into class logits.", "The boundary can become a connected set of linear pieces."]),
+      math("Boundary View", String.raw`\begin{aligned}
+h_j &= \max(0, w_j^{\top}x+b_j) \\
+\mathrm{logit}_0 &= v_0^{\top}h+c_0 \\
+\mathrm{logit}_1 &= v_1^{\top}h+c_1 \\
+\text{decision boundary:}\quad \mathrm{logit}_0 &= \mathrm{logit}_1
+\end{aligned}`),
+    ],
+    "Do not describe the MLP as magic. It builds piecewise linear boundaries.",
+    "stack"),
+
+  slide(24, "Output Layer: Logits",
+    "The final layer usually outputs logits, not probabilities.",
+    [
+      list(["Logit: raw class score before normalization", "Binary classification can use two class logits.", "Multi-class classification outputs one logit per class.", "Prediction uses `argmax(logits, dim=1)`."]),
+      math("Shape", String.raw`\begin{aligned}
+Z &= \mathrm{model}(X) \\
+Z &\in \mathbb{R}^{n \times C} \\
+Z_{i,k} &= \text{raw score for sample } i \text{ and class } k \\
+\hat{y} &= \arg\max_{k} Z_{i,k} \in \{0,\ldots,C-1\}^{n}
+\end{aligned}`),
+    ],
+    "Logits do not need to sum to 1.",
+    "stack"),
+
+  slide(25, "Softmax",
+    "Softmax converts class logits into a probability distribution.",
+    [
+      math("Step-by-Step", String.raw`\begin{aligned}
+z &= [z_1,z_2,\ldots,z_C] \\
+e_k &= \exp(z_k) \\
+p_k &= \frac{e_k}{\sum_{j=1}^{C} e_j} \\
+\mathrm{softmax}(z)_k &= \frac{\exp(z_k)}{\sum_{j=1}^{C}\exp(z_j)}
+\end{aligned}`),
+      math("Shape", String.raw`\begin{aligned}
+Z &\in \mathbb{R}^{n \times C} \\
+P &= \mathrm{softmax}(Z,\mathrm{dim}=1) \in \mathbb{R}^{n \times C} \\
+\sum_{k=1}^{C} P_{i,k} &= 1\quad\text{for each row } i
+\end{aligned}`),
+    ],
+    "Softmax preserves the ranking of logits but normalizes their scale.",
+    "stack"),
+
+  slide(26, "Cross Entropy",
+    "Cross entropy creates a learning signal by rewarding high probability on the true class.",
+    [
+      math("One Sample", String.raw`\begin{aligned}
+z &= \mathrm{model}(x) \in \mathbb{R}^{C} \\
+p &= \mathrm{softmax}(z) \in \mathbb{R}^{C} \\
+p_y &= p[y] \\
+\ell &= -\log(p_y)
+\end{aligned}`),
+      math("Batch Version", String.raw`\begin{aligned}
+Z &\in \mathbb{R}^{n \times C} \\
+y &\in \{0,\ldots,C-1\}^{n} \\
+\mathcal{L} &= \frac{1}{n}\sum_{i=1}^{n} -\log\left(\mathrm{softmax}(Z_i)_{y_i}\right)
+\end{aligned}`),
+    ],
+    "Gradient details are for Week 2; today students need the loss intuition.",
+    "stack"),
+
+  slide(27, "PyTorch CrossEntropyLoss",
+    "`nn.CrossEntropyLoss` expects raw logits and class-index targets.",
+    [
+      list(["Input logits: `[batch, num_classes]`", "Target: `[batch]`", "Target dtype: `torch.long`", "Target values: `0` to `num_classes - 1`", "Do not put softmax at the model output."]),
+      code("Code", `criterion = nn.CrossEntropyLoss()
+
+logits = model(X_batch)              # [batch, 2], float
+loss = criterion(logits, y_batch)    # y_batch: [batch], long`),
+    ],
+    "Many beginner PyTorch errors come from loss input and target shapes.",
+    "stack"),
+
+  slide(28, "CrossEntropyLoss: Common Mistakes",
+    "Most beginner errors come from giving the loss function probabilities or wrongly shaped targets.",
+    [list([
+      "Wrong target shape: `[batch, 1]`",
+      "Wrong target dtype: float",
+      "Wrong input: `softmax(logits)`",
+      "Wrong output size: `[batch, 1]` with CrossEntropyLoss",
+    ], { columns: 2 })],
+    "For two-class CrossEntropyLoss, use two logits and integer class indices.",
+    "stack"),
+
+  slide(28, "Loss Is Not Metric",
+    "Loss is the learning signal; metric is the reporting criterion.",
+    [table("Comparison", ["Aspect", "Loss", "Metric"], [
+      ["Purpose", "Objective for parameter update", "Model comparison and reporting"],
+      ["During training", "Optimizer tries to reduce it", "Usually recorded"],
+      ["Differentiability", "Usually required", "Not required"],
+      ["Examples", "cross entropy, MSE", "accuracy, F1, ROC-AUC"],
+      ["Code location", "training loop", "evaluation step"],
+    ])],
+    "Accuracy is hard to use directly as loss because threshold and argmax are not smooth differentiable operations.",
+    "table"),
+
+  slide(29, "Dataset Tensor Conversion",
+    "Scikit-learn data must be converted to PyTorch tensors with correct dtype.",
+    [code("Code", `import numpy as np
+import torch
+from sklearn.datasets import make_moons
+from sklearn.model_selection import train_test_split
+
+SEED = 42
+np.random.seed(SEED)
+torch.manual_seed(SEED)
+
+X_np, y_np = make_moons(n_samples=300, noise=0.20, random_state=SEED)
+
+X_train_np, X_val_np, y_train_np, y_val_np = train_test_split(
+    X_np, y_np, test_size=0.30, random_state=SEED, stratify=y_np
+)`)],
+    "Use the same seed and split before comparing models.",
+    "stack"),
+
+  slide(30, "Dataset Tensor Conversion: Tensors",
+    "`X` should be float; class-index `y` for CrossEntropyLoss should be long.",
+    [code("Code", `X_train = torch.tensor(X_train_np, dtype=torch.float32)
+y_train = torch.tensor(y_train_np, dtype=torch.long)
+X_val = torch.tensor(X_val_np, dtype=torch.float32)
+y_val = torch.tensor(y_val_np, dtype=torch.long)`),
+    code("Shape Check", `print(X_train.shape)  # torch.Size([210, 2])
+print(y_train.shape)  # torch.Size([210])
+print(X_val.shape)    # torch.Size([90, 2])
+print(y_val.shape)    # torch.Size([90])`)],
+    "This slide is the dtype and shape checklist before training.",
+    "stack"),
+
+  slide(30, "PyTorch MLP Class",
+    "A PyTorch model defines layers in `__init__` and tensor flow in `forward`.",
+    [code("Code", `import torch.nn as nn
+
+class MLP(nn.Module):
+    def __init__(self, input_dim=2, hidden_dim=16, num_classes=2):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(input_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, num_classes),
+        )
+
+    def forward(self, x):
+        return self.net(x)`)],
+    "`forward` returns logits. Loss is computed in the training loop.",
+    "stack"),
+
+  slide(31, "PyTorch MLP Shape Flow",
+    "Read the model by following the batch tensor through each layer.",
+    [math("Shape Flow", String.raw`\begin{aligned}
+x &: [\mathrm{batch},2] \\
+\mathrm{Linear}(2,16) &: [\mathrm{batch},16] \\
+\mathrm{ReLU} &: [\mathrm{batch},16] \\
+\mathrm{Linear}(16,16) &: [\mathrm{batch},16] \\
+\mathrm{ReLU} &: [\mathrm{batch},16] \\
+\mathrm{Linear}(16,2) &: [\mathrm{batch},2]
+\end{aligned}`)],
+    "The last dimension changes; the batch dimension stays first.",
+    "stack"),
+
+  slide(31, "Loss and Optimizer Setup",
+    "Loss defines what to reduce; the optimizer defines how parameters are updated.",
+    [
+      code("Code", `model = MLP(input_dim=2, hidden_dim=16, num_classes=2)
+
+criterion = nn.CrossEntropyLoss()
+optimizer = torch.optim.Adam(
+    model.parameters(),
+    lr=0.01,
+)`),
+      list(["`model.parameters()`: trainable weights and biases", "`lr`: update size", "`CrossEntropyLoss`: logits `[batch, 2]` and target `[batch]`", "Adam is a stable optimizer for this beginner demo."]),
+    ],
+    "Do not turn this slide into an optimizer comparison.",
+    "stack"),
+
+  slide(32, "Full Minimal Training Loop",
+    "Training repeats forward, loss, backward, update, and evaluation.",
+    [code("Minimal Full-Batch Loop", `def accuracy_from_logits(logits, y):
+    preds = logits.argmax(dim=1)
+    return (preds == y).float().mean().item()
+
+history = {"train_loss": [], "val_loss": [], "train_acc": [], "val_acc": []}
+
+for epoch in range(1, 501):
+    model.train()
+    logits = model(X_train)                 # [210, 2]
+    loss = criterion(logits, y_train)       # scalar
+
+    optimizer.zero_grad()
+    loss.backward()
+    optimizer.step()`)],
+    "This is the parameter-update part of the loop.",
+    "stack"),
+
+  slide(33, "Full Minimal Training Loop: Evaluation",
+    "After the update, evaluate without storing gradients.",
+    [code("Evaluation Block", `for epoch in range(1, 501):
+    model.eval()
+    with torch.no_grad():
+        train_logits = model(X_train)
+        val_logits = model(X_val)
+        history["train_loss"].append(criterion(train_logits, y_train).item())
+        history["val_loss"].append(criterion(val_logits, y_val).item())
+        history["train_acc"].append(accuracy_from_logits(train_logits, y_train))
+        history["val_acc"].append(accuracy_from_logits(val_logits, y_val))`)],
+    "Use full-batch training first; DataLoader can come later.",
+    "stack"),
+
+  slide(33, "Reading the Training Loop",
+    "Read code by mapping each line to a mathematical role.",
+    [table("Forward and Update", ["Code", "Meaning"], [
+      ["`model.train()`", "training mode"],
+      ["`logits = model(X_train)`", "forward pass, `X -> Z`"],
+      ["`loss = criterion(logits, y_train)`", "cross entropy"],
+      ["`optimizer.zero_grad()`", "clear previous gradients"],
+      ["`loss.backward()`", "compute gradients"],
+      ["`optimizer.step()`", "update parameters"],
+    ])],
+    "`loss.backward()` computes gradients; it does not directly update parameters.",
+    "table"),
+
+  slide(34, "Reading the Evaluation Block",
+    "Evaluation code measures performance without changing parameters.",
+    [table("Evaluation", ["Code", "Meaning"], [
+      ["`model.eval()`", "evaluation mode"],
+      ["`torch.no_grad()`", "do not store gradients during evaluation"],
+      ["`argmax(dim=1)`", "class prediction from logits"],
+    ])],
+    "Evaluation reports behavior; it does not train the model.",
+    "table"),
+
+  slide(34, "Strict make_moons Protocol",
+    "Fair comparison requires separating fixed variables from changed variables.",
+    [
+      list(["Fixed seed: `SEED = 42`", "Fixed dataset: `make_moons(n_samples=300, noise=0.20, random_state=SEED)`", "Fixed split: `test_size=0.30`, `random_state=SEED`, `stratify=y`", "Fixed train/validation indices for every model", "Fixed metric: validation accuracy", "Fixed plotting function and reporting format"]),
+      list(["Changed model class: logistic regression vs ReLU MLP vs no-activation MLP", "Changed hidden size: `2, 8, 16, 64`", "Changed activation: ReLU vs no ReLU", "Learning rate only as a separate experiment"], { columns: 2 }),
+    ],
+    "If several variables change at once, the result cannot be interpreted.",
+    "stack"),
+
+  slide(35, "Shared Metric and Plotting",
+    "Use the same evaluation and plotting functions for every model.",
+    [code("Code", `def evaluate_model(model, X, y):
+    model.eval()
+    with torch.no_grad():
+        logits = model(X)
+        loss = criterion(logits, y).item()
+        acc = accuracy_from_logits(logits, y)
+    return {"loss": loss, "acc": acc}`)],
+    "Every model uses the same validation accuracy and loss calculation.",
+    "stack"),
+
+  slide(36, "Shared Decision-Boundary Plot",
+    "The plotting function must also stay fixed across all compared models.",
+    [code("Code", `def plot_decision_boundary(model, X_np, y_np, ax, title):
+    x_min, x_max = X_np[:, 0].min() - 0.5, X_np[:, 0].max() + 0.5
+    y_min, y_max = X_np[:, 1].min() - 0.5, X_np[:, 1].max() + 0.5
+    xx, yy = np.meshgrid(np.linspace(x_min, x_max, 200),
+                         np.linspace(y_min, y_max, 200))
+    grid = torch.tensor(np.c_[xx.ravel(), yy.ravel()], dtype=torch.float32)
+    with torch.no_grad():
+        pred = model(grid).argmax(dim=1).numpy().reshape(xx.shape)
+    ax.contourf(xx, yy, pred, alpha=0.25)
+    ax.scatter(X_np[:, 0], X_np[:, 1], c=y_np, s=20, edgecolor="k")
+    ax.set_title(title)`)],
+    "Visualization is part of the experimental protocol.",
+    "stack"),
+
+  slide(37, "Shared Plotting: Read the Steps",
+    "The decision-boundary plot evaluates the trained model over a dense 2D grid.",
+    [list([
+      "Build a rectangular mesh around the data.",
+      "Convert every grid point to a `float32` tensor.",
+      "Predict a class for every grid point with `argmax(dim=1)`.",
+      "Reshape predictions back to the mesh.",
+      "Draw the predicted regions and overlay the original samples.",
+    ])],
+    "This explanation can replace code reading if the class is short on time.",
+    "stack"),
+
+  slide(36, "Baseline: Logistic Regression in PyTorch",
+    "The baseline should be simple and interpretable.",
+    [
+      code("Code", `class TorchLogisticRegression(nn.Module):
+    def __init__(self, input_dim=2, num_classes=2):
+        super().__init__()
+        self.linear = nn.Linear(input_dim, num_classes)
+
+    def forward(self, x):
+        return self.linear(x)`),
+      math("Shape", String.raw`\begin{aligned}
+X &: [\mathrm{batch},2] \\
+\mathrm{logits} &: [\mathrm{batch},2] \\
+\text{decision boundary:}\quad \mathrm{logit}_0 &= \mathrm{logit}_1
+\end{aligned}`),
+    ],
+    "A PyTorch baseline can share the same training loop with the MLP.",
+    "stack"),
+
+  slide(37, "Ablation: Remove Activation",
+    "Removing ReLU tests whether nonlinearity is actually necessary.",
+    [code("Code", `class LinearStack(nn.Module):
+    def __init__(self, input_dim=2, hidden_dim=16, num_classes=2):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(input_dim, hidden_dim),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.Linear(hidden_dim, num_classes),
+        )
+
+    def forward(self, x):
+        return self.net(x)`)],
+    "The removed variable is ReLU activation.",
+    "stack"),
+
+  slide(38, "Ablation: What Changed",
+    "The architecture looks deep, but the removed variable is exactly the ReLU activation.",
+    [list([
+      "The architecture looks deep.",
+      "Without activation, it has the expressivity of one affine map.",
+      "The boundary is still linear.",
+      "This ablation tests depth versus nonlinearity.",
+    ])],
+    "Tie this back to the deep linear collapse derivation.",
+    "stack"),
+
+  slide(38, "Capacity Study: Hidden Size",
+    "Hidden size controls model capacity, but bigger is not automatically better.",
+    [table("Experiment Plan", ["Experiment", "Model", "Hidden size", "Activation", "Changed variable"], [
+        ["A", "Logistic regression", "none", "none", "model class"],
+        ["B", "MLP", "2", "ReLU", "hidden size"],
+        ["C", "MLP", "8", "ReLU", "hidden size"],
+        ["D", "MLP", "16", "ReLU", "hidden size"],
+        ["E", "MLP", "64", "ReLU", "hidden size"],
+        ["F", "LinearStack", "16", "none", "activation"],
+      ])],
+    "This is the small-demo version of a capacity study in papers.",
+    "table"),
+
+  slide(39, "Capacity Study: Interpretation",
+    "Use validation performance and boundary plots together when judging hidden size.",
+    [list([
+      "Too small: possible underfitting",
+      "Appropriate size: enough expressivity with stable validation",
+      "Too large: possible overfitting",
+      "Choose using validation accuracy and boundary plots",
+    ], { columns: 2 })],
+    "A larger hidden layer is a changed variable, not automatically an improvement.",
+    "stack"),
+
+  slide(39, "Result Recording Template",
+    "Good demo results include numbers, plots, and a short interpretation.",
+    [table("Results", ["Model", "Changed variable", "Train loss", "Val loss", "Train acc", "Val acc", "Interpretation"], [
+        ["Logistic regression", "baseline", "", "", "", "", "linear boundary"],
+        ["ReLU MLP h=16", "proposed model", "", "", "", "", "nonlinear boundary"],
+        ["LinearStack h=16", "remove ReLU", "", "", "", "", "deep linear collapse"],
+        ["ReLU MLP h=2", "capacity", "", "", "", "", "possible underfit"],
+        ["ReLU MLP h=64", "capacity", "", "", "", "", "check overfit"],
+      ])],
+    "A blank table filled live teaches experiment comparison.",
+    "table"),
+
+  slide(40, "Result Figures to Show",
+    "Use the same visual format for every compared model.",
+    [list([
+      "Same train/validation scatter plot",
+      "Logistic regression boundary",
+      "ReLU MLP boundary",
+      "No-activation boundary",
+      "Hidden-size grid",
+      "Train/validation loss curve",
+    ], { columns: 2 })],
+    "The figures should make the model-class difference visible.",
+    "stack"),
+
+  slide(40, "Diagnostic Table",
+    "Loss and metric behavior gives a first diagnosis of training outcomes.",
+    [table("Loss / Metric Patterns", ["Case", "Train loss", "Val loss", "Train metric", "Val metric", "Likely interpretation"], [
+      ["Normal learning", "decreases", "decreases then stabilizes", "increases", "increases then stabilizes", "learning and generalizing"],
+      ["Overfitting", "keeps decreasing", "starts increasing", "keeps increasing", "stalls or drops", "too fit to train data"],
+      ["Underfitting", "stays high", "stays high", "low", "low", "not enough capacity or training"],
+    ])],
+    "First classify whether the model is learning, overfitting, or underfitting.",
+    "table"),
+
+  slide(41, "Diagnostic Table: Failure Cases",
+    "Flat or abnormal curves often point to setup problems before model-design problems.",
+    [table("Loss / Metric Patterns", ["Case", "Train loss", "Val loss", "Train metric", "Val metric", "Likely interpretation"], [
+      ["Optimization failure", "almost unchanged", "almost unchanged", "almost unchanged", "almost unchanged", "learning rate, optimizer, or gradient issue"],
+      ["Possible code bug", "NaN or abnormal", "NaN or abnormal", "nonsense", "nonsense", "shape, dtype, label, or softmax issue"],
+    ])],
+    "Teach students to say what evidence points to what failure mode.",
+    "table"),
+
+  slide(41, "Paper-Reading Language",
+    "The small demo is a miniature version of a paper experiment section.",
+    [table("Research Terms", ["Paper term", "Demo meaning", "Sentence students should write"], [
+      ["Baseline", "Logistic regression", "We compare against a simple linear baseline."],
+      ["Proposed model", "ReLU MLP", "The proposed model learns a nonlinear representation."],
+      ["Ablation", "Remove ReLU", "We remove activation to test whether ReLU explains the gain."],
+      ["Capacity study", "Hidden-size comparison", "We vary hidden dimension to inspect capacity and generalization."],
+      ["Error analysis", "Inspect wrong regions", "We analyze where errors concentrate on the decision-boundary plot."],
+    ])],
+    "Papers should be read through baseline, proposed method, ablation, capacity, and error analysis.",
+    "table"),
+
+  slide(42, "Demo Result 1: Logistic Regression",
+    "Logistic regression is structurally disadvantaged on curved `make_moons` data.",
+    [list([
+      "Boundary: one linear boundary",
+      "Error pattern: systematic errors near curved inner and outer regions",
+      "Interpretation: model-class mismatch",
+      "Research meaning: a failing baseline can still be very informative",
+    ])],
+    "Do not call it a bad model. It is a useful baseline."),
+
+  slide(43, "Demo Result 2: ReLU MLP",
+    "A ReLU MLP can form a nonlinear boundary suited to `make_moons`.",
+    [list([
+      "Boundary: piecewise nonlinear shape",
+      "Hidden units partition the input space into regions.",
+      "The output layer combines those regions into class scores.",
+      "Expected result: higher validation accuracy than the baseline",
+      "Caution: more complex boundaries are not always better.",
+    ])],
+    "Always interpret the boundary together with validation performance."),
+
+  slide(44, "Demo Result 3: Remove Activation",
+    "The same number of layers cannot create a nonlinear boundary if activation is removed.",
+    [
+      list(["The architecture looks deep.", "Without activation, it is a composition of affine maps.", "The boundary returns to a linear form.", "This result supports the necessity of ReLU."]),
+      math("Comparison", String.raw`\begin{aligned}
+\mathrm{Linear}\rightarrow\mathrm{Linear}\rightarrow\mathrm{Linear} &\equiv \mathrm{Linear} \\
+\mathrm{Linear}\rightarrow\mathrm{ReLU}\rightarrow\mathrm{Linear} &\not\equiv \mathrm{Linear}
+\end{aligned}`),
+    ],
+    "This slide prevents students from equating depth with nonlinearity.",
+    "stack"),
+
+  slide(45, "Demo Result 4: Hidden Size",
+    "Hidden size is a capacity variable.",
+    [list([
+      "Too small: possible underfitting",
+      "Appropriate size: enough expressivity and stable generalization",
+      "Too large: possible overfitting",
+      "Final judgment should use validation performance and boundary complexity, not train accuracy alone.",
+    ])],
+    "Connect this directly to model-size tables in papers."),
+
+  slide(46, "Assignment",
+    "The assignment is not just to run code; it is to explain model class and decision boundaries through experiments.",
+    [
+      list(["Dataset: `make_moons`", "Baseline: logistic regression", "Model A: ReLU MLP", "Model B: same MLP without activation", "Model C: at least three hidden sizes", "Fixed protocol: seed, split, metric, plotting function", "Submission: 1-2 page report + code"]),
+      list(["Experiment protocol", "Result table", "Decision-boundary plots", "Train/validation loss curve", "Diagnostic interpretation", "Short error analysis"], { columns: 2 }),
+    ],
+    "High accuracy alone is not enough; students must explain why the result happened.",
+    "stack"),
+
+  slide(47, "Assignment Rubric",
+    "Evaluation prioritizes experiment design and explanation quality over simply running code.",
+    [table("Rubric", ["Item", "Points", "Criterion"], [
+      ["Tensor shapes and loss", "15", "CrossEntropyLoss input/target shape and dtype are correct"],
+      ["Baseline", "15", "logistic regression comparison included"],
+      ["ReLU MLP", "15", "MLP class and training loop are correct"],
+      ["Ablation", "15", "activation-removal experiment included and interpreted"],
+    ])],
+    "The first half checks whether the core model comparison is implemented correctly.",
+    "table"),
+
+  slide(48, "Assignment Rubric: Experiment Quality",
+    "The remaining points evaluate whether the result is interpretable.",
+    [table("Rubric", ["Item", "Points", "Criterion"], [
+      ["Capacity study", "10", "hidden-size comparison uses the same protocol"],
+      ["Visualization", "10", "same plotting function used for boundaries"],
+      ["Loss/metric record", "10", "train/validation loss and metric recorded"],
+      ["Error analysis", "10", "wrong regions and causes are described concretely"],
+    ])],
+    "The rubric teaches the structure of a research-style report.",
+    "table"),
+
+  slide(48, "End-of-Class Checkpoint",
+    "Today's concepts lead directly into backpropagation and optimization.",
+    [checklist([
+      "Explain the shapes in `XW + b`.",
+      "Derive why logistic regression has boundary `w^T x + b = 0`.",
+      "Explain why some data cannot be solved by a linear boundary.",
+      "Write the collapse equation for a deep linear network.",
+      "Describe the tensor flow `X -> H_1 -> H_2 -> logits`.",
+      "Explain how softmax and cross entropy turn true-class probability into loss.",
+      "State the input and target shapes for `CrossEntropyLoss`.",
+      "Separate fixed and changed variables in the make_moons experiment.",
+    ])],
+    "Use this as a spoken checkpoint, not as a quiz card.",
+    "stack"),
+
+  slide(49, "Next Week: How Learning Happens",
+    "Today covered what the model can represent; next week covers how parameters are learned.",
+    [list([
+      "Today: model class, representation, logits, loss",
+      "Next week: gradients, chain rule, backpropagation, optimizer",
+      "Core question: how does loss become a parameter update?",
+      "Connecting code: `loss.backward()` and `optimizer.step()`",
+    ])],
+    "End by separating expressivity from learning dynamics."),
+];
+
+const slides = rawSlides.map((item, index) => ({
+  ...item,
+  eyebrow: `Slide ${index + 1}`,
+}));
+
+
+const deck = document.querySelector("#deck");
+const prevButton = document.querySelector("#prevSlide");
+const nextButton = document.querySelector("#nextSlide");
+const slideCounter = document.querySelector("#slideCounter");
+
+let currentSlide = 0;
+
+function inlineCode(text) {
+  return text.replace(/`([^`]+)`/g, "<code>$1</code>");
+}
+
+function escapeHtml(text) {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function renderBlockTitle(title) {
+  if (!title) return "";
+  return `<h3>${title}</h3>`;
+}
+
+function renderList(block) {
+  const className = block.columns === 2 ? "content-list two-col" : "content-list";
+  const items = block.items
+    .map((item) => `<li>${inlineCode(item)}</li>`)
+    .join("");
+
+  return `
+    <section class="content-card">
+      ${renderBlockTitle(block.title)}
+      <ul class="${className}">${items}</ul>
+    </section>
+  `;
+}
+
+function renderChecklist(block) {
+  const items = block.items
+    .map((item) => `<li><span class="check-dot"></span><span>${inlineCode(item)}</span></li>`)
+    .join("");
+
+  return `
+    <section class="content-card">
+      ${renderBlockTitle(block.title)}
+      <ul class="check-list">${items}</ul>
+    </section>
+  `;
+}
+
+function renderMath(block) {
+  return `
+    <section class="math-card">
+      ${renderBlockTitle(block.title)}
+      <div class="math-display">\\[${block.body}\\]</div>
+    </section>
+  `;
+}
+
+function renderCode(block) {
+  return `
+    <section class="code-card">
+      ${renderBlockTitle(block.title)}
+      <pre><code>${escapeHtml(block.body)}</code></pre>
+    </section>
+  `;
+}
+
+function renderTable(block) {
+  const header = block.headers.map((cell) => `<th>${inlineCode(cell)}</th>`).join("");
+  const rows = block.rows
+    .map(
+      (row) =>
+        `<tr>${row.map((cell) => `<td>${inlineCode(cell)}</td>`).join("")}</tr>`,
+    )
+    .join("");
+
+  return `
+    <section class="table-card">
+      ${renderBlockTitle(block.title)}
+      <table>
+        <thead><tr>${header}</tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </section>
+  `;
+}
+
+function renderBlock(block) {
+  if (block.type === "list") return renderList(block);
+  if (block.type === "checklist") return renderChecklist(block);
+  if (block.type === "math") return renderMath(block);
+  if (block.type === "code") return renderCode(block);
+  if (block.type === "table") return renderTable(block);
+  return "";
+}
+
+function typesetMath(attempt = 0) {
+  if (window.MathJax?.typesetPromise) {
+    window.MathJax.typesetClear?.([deck]);
+    window.MathJax.typesetPromise([deck]).catch((error) => {
+      console.error("MathJax typesetting failed", error);
+    });
+    return;
+  }
+
+  if (attempt < 20) {
+    window.setTimeout(() => typesetMath(attempt + 1), 100);
+  }
+}
+
+function renderSlide(index) {
+  const slide = slides[index];
+  const slideMarkup = `
+    <article class="slide-shell">
+      <section class="slide">
+        <div class="slide-accent"></div>
+        <header class="slide-header">
+          <p class="eyebrow">${slide.eyebrow}</p>
+          <h1>${slide.title}</h1>
+          <p class="core-message">${inlineCode(slide.message)}</p>
+        </header>
+        <div class="slide-grid ${slide.blocks.length === 1 ? "single" : ""} ${slide.layout || ""}">
+          ${slide.blocks.map(renderBlock).join("")}
+        </div>
+        <footer class="slide-footer">
+          <span>ML Research Deep Learning Bridge</span>
+          <span>${index + 1} / ${slides.length}</span>
+        </footer>
+      </section>
+      <details class="speaker-notes" open>
+        <summary>Speaker notes</summary>
+        <p>${inlineCode(slide.notes)}</p>
+      </details>
+    </article>
+  `;
+
+  deck.innerHTML = slideMarkup;
+  slideCounter.textContent = `${index + 1} / ${slides.length}`;
+  prevButton.disabled = index === 0;
+  nextButton.disabled = index === slides.length - 1;
+  typesetMath();
+}
+
+function goToSlide(nextIndex) {
+  currentSlide = Math.max(0, Math.min(slides.length - 1, nextIndex));
+  renderSlide(currentSlide);
+}
+
+prevButton.addEventListener("click", () => goToSlide(currentSlide - 1));
+nextButton.addEventListener("click", () => goToSlide(currentSlide + 1));
+
+window.addEventListener("keydown", (event) => {
+  if (event.key === "ArrowRight" || event.key === "PageDown") {
+    goToSlide(currentSlide + 1);
+  }
+  if (event.key === "ArrowLeft" || event.key === "PageUp") {
+    goToSlide(currentSlide - 1);
+  }
+});
+
+renderSlide(currentSlide);
+
+    </script>
+  </body>
+</html>

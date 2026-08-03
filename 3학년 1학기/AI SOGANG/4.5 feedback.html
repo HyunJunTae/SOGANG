@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>머신러닝 기초 피드백</title>
+    <!-- Reveal.js CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.3.1/reset.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.3.1/reveal.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.3.1/theme/simple.min.css" id="theme">
+    <!-- Pretendard Font -->
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.8/dist/web/static/pretendard-dynamic-subset.css" />
+    <!-- MathJax -->
+    <script type="text/x-mathjax-config">
+        MathJax.Hub.Config({
+            tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]}
+        });
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/MathJax.js?config=TeX-AMS_HTML"></script>
+    <style>
+        .reveal {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 32px;
+        }
+        .reveal h1, .reveal h2, .reveal h3, .reveal h4 {
+            font-family: 'Pretendard', sans-serif;
+            text-transform: none;
+            font-weight: 700;
+            margin-bottom: 30px;
+        }
+        .reveal h2 {
+            font-size: 1.6em;
+            color: #2c3e50;
+        }
+        .reveal p, .reveal li {
+            text-align: left;
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+        .reveal ul {
+            display: block;
+            margin: 0 auto;
+            width: 80%;
+        }
+        .reveal li {
+            font-size: 0.9em;
+            color: #34495e;
+        }
+        .image-placeholder {
+            width: 80%;
+            height: 250px;
+            background-color: #f8f9fa;
+            border: 2px dashed #bdc3c7;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 30px auto;
+            color: #7f8c8d;
+            font-size: 0.8em;
+            border-radius: 8px;
+        }
+        .highlight {
+            color: #e74c3c;
+            font-weight: 700;
+        }
+        .box {
+            background-color: #ecf0f1;
+            padding: 20px;
+            border-radius: 10px;
+            font-size: 0.85em;
+            margin-top: 20px;
+            border-left: 5px solid #3498db;
+        }
+    </style>
+</head>
+<body>
+    <div class="reveal">
+        <div class="slides">
+
+            <!-- Slide 0: Title -->
+            <section>
+                <h2>머신러닝 입문 피드백</h2>
+                <p style="text-align: center; color: #7f8c8d;">새싹반 모델링 기초 과정</p>
+            </section>
+
+            <!-- Slide 1 -->
+            <section>
+                <h2>1. 모델과 가중치 학습</h2>
+                <ul>
+                    <li><strong>수학적 모델</strong>: 데이터를 가장 잘 묘사하는 함수식 (예: $y = Wx + b$)</li>
+                    <li><strong>$W$ (가중치, Weight)</strong>: 입력 데이터가 결과에 미치는 영향력이나 중요도</li>
+                    <li><strong>$b$ (편향, Bias)</strong>: 기본적으로 깔려 있는 기준점 (영점 조절)</li>
+                    <li><span class="highlight">가중치 학습</span>: 최적의 $W$와 $b$를 찾기 위해 끊임없이 모델을 업데이트하는 과정</li>
+                </ul>
+            </section>
+
+            <!-- Slide 2 -->
+            <section>
+                <h2>선형 회귀와 오차(Loss)</h2>
+                <ul>
+                    <li>오차 계산 방식: <strong>MSE</strong> (Mean Squared Error) vs <strong>MAE</strong> (Mean Absolute Error)</li>
+                    <li>$$ MSE = \frac{1}{n}\sum_{i=1}^{n}(y_i - \hat{y}_i)^2 $$</li>
+                    <li>$$ MAE = \frac{1}{n}\sum_{i=1}^{n}|y_i - \hat{y}_i| $$</li>
+                </ul>
+                <div class="box">
+                    <strong>Q. MAE(절댓값) 대신 왜 기꺼이 오차를 '제곱'하는 MSE를 주로 쓸까요?</strong><br>
+                    (힌트: 미분 가능성, 큰 오차에 대한 강한 패널티)
+                </div>
+            </section>
+
+            <!-- Slide 3 -->
+            <section>
+                <h2>Quiz 🤔</h2>
+                <p style="text-align: center; font-size: 1.1em; margin-bottom: 20px;"><strong>우리의 모델은 도대체 무엇을 하면 좋을까요?</strong></p>
+                <div style="width: 80%; height: auto; margin: 20px auto;">
+                    <img src="https://raw.githubusercontent.com/angeloyeo/angeloyeo.github.io/master/pics/2020-08-24-linear_regression/pic8.png" alt="Quiz Image" style="max-height: 350px; display: block; margin: 0 auto; border-radius: 8px;">
+                </div>
+                <p style="text-align: center; font-size: 0.9em; color:#7f8c8d;">수많은 데이터 점들 사이에서, 과연 어떤 선(모델)이 가장 훌륭한 선일까요?</p>
+            </section>
+
+            <!-- Slide 3-1 -->
+            <section>
+                <h2>핵심: 현실의 분포 예측</h2>
+                <div class="box" style="text-align: center; font-size: 1.2em; padding: 40px; margin: 40px auto; border-left: none; border-top: 5px solid #27ae60; background-color: #f8f9fa;">
+                    "모든 머신러닝 모델이 바라는 단 한 가지는,<br><br>
+                    <strong style="color: #c0392b;">현실의 데이터 분포를 가장 완벽하게 예측(모방)하는 것</strong>"
+                </div>
+                <ul>
+                    <li>우리가 Loss(오차)를 구하고 가중치를 업데이트(학습)하는 이유는</li>
+                    <li>결국 방금 본 사진처럼 <span class="highlight">현실의 진짜 데이터 패턴을 가장 잘 관통하는 단 하나의 선</span>을 찾기 위함입니다.</li>
+                </ul>
+            </section>
+
+            <!-- Slide 4 -->
+            <section>
+                <h2>2. 경사하강법 (Gradient Descent)</h2>
+                <ul>
+                    <li>미분을 활용해 오차(Loss) 곡면을 따라 최소점(최적해)으로 하강</li>
+                    <li><strong>각 단계마다 기울기의 반대 방향으로 가중치 업데이트</strong>
+                        <div style="font-size: 1.2rem; background: #fdfdfd; padding: 10px; border-radius: 10px; border: 2px solid #3498db; width: fit-content; margin: 15px auto;">
+                            $$ w_{new} = w_{old} - \boldsymbol{\alpha} \frac{\partial L}{\partial w} $$
+                        </div>
+                    </li>
+                    <li><strong>학습률($\boldsymbol{\alpha}$, Learning Rate):</strong> 한 번의 업데이트마다 이동할 보폭</li>
+                </ul>
+                <div style="width: 80%; height: auto; margin: 15px auto;">
+                    <img src="https://velog.velcdn.com/images/chiroya/post/f5d5bc06-b383-4482-8399-7b21e8c4f247/image.png" alt="Learning Rate" style="max-height: 250px; display: block; margin: 0 auto; border-radius: 8px;">
+                </div>
+            </section>
+
+            <!-- Slide 5 -->
+            <section>
+                <h2>추가 핵심 지식: 최적화와 미니 배치</h2>
+                <ul>
+                    <li><strong>전체 데이터(Full Batch):</strong> 1 Step 계산이 무겁고, Local Minimum에 빠지기 쉬움</li>
+                    <li><strong>미니 배치(Mini-Batch):</strong> <span style="font-size: 0.9em; color:#7f8c8d;">전체 데이터를 잘게 쪼개서 모델에 조금씩 입력하는 방식</span><br>
+                    - 계산 속도가 빠름<br> 
+                    - 지그재그(Noise) 이동이 고립된 곡면(Local Minimum) 탈출을 도움</li>
+                </ul>
+                <div style="display: flex; justify-content: center; gap: 20px; margin-top: 20px;">
+                    <img src="https://jiwonkkim.github.io/assets/ml/04_gradient_descent/Fig02_local_minimum_02.png" alt="Local Minimum" style="height: 250px; border-radius: 8px;">
+                    <img src="https://blog.kakaocdn.net/dna/t74GB/btqGiSVYMF5/AAAAAAAAAAAAAAAAAAAAAIOM_xjp57iYhBoiJ-AlYKf4eA9frskVHk06iR6g_bqN/img.png?credential=yqXZFxpELC7KVnFOS48ylbz2pIh7yKj8&expires=1777561199&allow_ip=&allow_referer=&signature=I6V%2B%2FHvNXT7COYz1jHd6jdZriRg%3D" alt="SGD Path" style="height: 250px; border-radius: 8px;">
+                </div>
+            </section>
+
+            <!-- Slide 6 -->
+            <section>
+                <h2>3. 과적합 (Overfitting)</h2>
+                <ul>
+                    <li>학습 데이터에만 지나치게 맞춰져 새로운 데이터 예측 실패</li>
+                    <li><strong>해결:</strong> 검증 데이터(Validation)를 통한 <strong>Early Stopping</strong></li>
+                </ul>
+                <div style="display: flex; justify-content: center; gap: 20px; margin-top: 15px;">
+                    <img src="https://scikit-learn.org/stable/_images/sphx_glr_plot_underfitting_overfitting_001.png" alt="Model Capacity" style="height: 250px; border-radius: 8px;">
+                    <img src="https://forums.fast.ai/uploads/default/original/2X/5/57b24adcaf41ec93767e692094f00369a4f2e6fb.jpg" alt="Overfitting Curve" style="height: 250px; border-radius: 8px;">
+                </div>
+            </section>
+
+            <!-- Slide 7 -->
+            <section>
+                <h2>4. Regularization (L1, L2) 예고</h2>
+                <ul>
+                    <li>가중치가 비정상적으로 커지는 것을 규제(Penalty)하여 과적합 방지</li>
+                    <li>모델의 복잡도를 낮추는 핵심 수학적 테크닉</li>
+                    <li><span class="highlight">👉 다음 주 세션에서 수학적 원리와 함께 집중 학습 예정!</span></li>
+                </ul>
+            </section>
+
+            <!-- Slide 8 -->
+            <section>
+                <h2>5. 로지스틱 회귀: 왜 선형 회귀가 아닐까?</h2>
+                <p style="text-align: center; font-size: 0.9em; font-weight: bold; color: #2980b9;">분류(Classification) 문제에서 선형 회귀를 쓰면 생기는 일</p>
+                <ul>
+                    <li><strong>한계 1. 이상치(Outlier) 취약성:</strong><br> 극단적 수치를 가진 데이터 하나가 합격 선(Threshold) 전체를 왜곡시킵니다.</li>
+                    <li><strong>한계 2. 값의 결과 범위($-\infty \sim \infty$):</strong><br> 결과값이 끝없이 뻗어 나가므로 이를 우리가 원하는 <strong>'0~1 사이의 확률'</strong>로 해석할 길이 없습니다.</li>
+                </ul>
+            </section>
+
+            <!-- Slide 9 -->
+            <section>
+                <h2>발상의 전환: 확률 대신 승산(Odds)</h2>
+                <ul>
+                    <li><strong>확률 대신 승산(Odds):</strong> <span class="highlight" style="font-size:0.9em;">$Odds = \frac{p}{1-p}$ (실패 확률 대비 성공 확률의 비율)</span><br>
+                    <span style="font-size: 0.85em; color:#7f8c8d;">예) 합격 확률($p$)이 $80\%$라면, $Odds = \frac{0.8}{0.2} = 4$ (합격 가능성이 불합격보다 4배 높음)</span>
+                    </li>
+                    <li>승산(Odds) 역시 그 범위가 $0 \sim \infty$라서 여전히 음수값을 갖는 선형 회귀($-\infty \sim \infty$)에 대응시킬 수 없습니다.</li>
+                    <li><strong>Log Odds:</strong> 여기에 $\log$를 씌우면 값의 범위가 드디어 $(-\infty, \infty)$로 무한히 확장됩니다!</li>
+                </ul>
+            </section>
+
+            <!-- Slide 10 -->
+            <section>
+                <h2>로지스틱 회귀 = Log Odds의 선형 회귀</h2>
+                <ul>
+                    <li><span class="highlight">로지스틱 회귀의 본질은 Log Odds에 대해 선형 결합($WX+b$)을 수행하는 것입니다.</span></li>
+                    <li>$$ \log\left(\frac{p}{1-p}\right) = WX + b $$</li>
+                    <li>우리가 진짜 알고 싶은 것은 확률 $p$이므로, 식의 양변에 지수($e$)를 취해 정리해 봅니다.</li>
+                    <div style="font-size:0.9em; background: #ecf0f1; padding: 10px; border-radius: 10px; text-align: center; margin-top: 15px;">
+                    $$ \frac{p}{1-p} = e^{WX + b} \quad \Rightarrow \quad p = \frac{e^{WX + b}}{1 + e^{WX + b}} $$
+                    </div>
+                </ul>
+            </section>
+
+            <!-- Slide 11 -->
+            <section>
+                <h2>시그모이드(Sigmoid)의 탄생과 오차(Loss)</h2>
+                <ul>
+                    <li>위 식 형태를 정리하면 우리가 잘 아는 <strong>시그모이드 함수</strong>가 탄생합니다.</li>
+                    <div style="font-size: 1.2rem; background: #fdfdfd; padding: 10px; border-radius: 10px; border: 2px solid #27ae60; width: fit-content; margin: 15px auto;">
+                        $$ p = \frac{1}{1 + e^{-(WX + b)}} $$
+                    </div>
+                    <li><strong>로지스틱 손실 함수 (이진 크로스 엔트로피 / BCE):</strong> 모델 확률 예측에 대한 진짜 오차 공식입니다. (정답 $y$가 0일 때와 1일 때 작동식이 다름)</li>
+                    <div style="font-size: 1.1rem; background: #ecf0f1; padding: 10px; border-radius: 10px; margin: 10px auto;">
+                        $$ Loss(BCE) = - \frac{1}{n} \sum_{i=1}^{n} \left[ y_i \log(\hat{y}_i) + (1 - y_i) \log(1 - \hat{y}_i) \right] $$
+                    </div>
+                </ul>
+            </section>
+
+            <!-- Slide 12 -->
+            <section>
+                <h2>6. 소프트맥스 (Softmax) 회귀</h2>
+                <div style="width: 80%; height: auto; margin: 15px auto;">
+                    <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQNjBorDzTC4HTeahu_WPdTsdyqPJuNTQfWRw&s" alt="Softmax Function" style="max-height: 250px; display: block; margin: 0 auto; border-radius: 8px;">
+                </div>
+                <ul>
+                    <li><strong>다중 분류(Multi-class) 모델의 최종 관문</strong></li>
+                    <li>각 클래스의 날것의 점수(Logits)들을 합산 비율에 맞춰 <strong>총합 1.0(100%)</strong>의 확률 분포로 정규화</li>
+                    <li>목표: <strong>정답 분포 [1, 0, 0, 0]</strong> 와 예측 분포 <strong>[0.5, 0.2, 0.2, 0.1]</strong> 사이의 오차 거리를 좁히는 것</li>
+                </ul>
+            </section>
+
+            <!-- Slide 13 -->
+            <section>
+                <h2>7. 다중 크로스 엔트로피 공식 (CE)</h2>
+                <ul>
+                    <li>이진 분류의 <strong>BCE</strong> 공식을 다중 클래스(수많은 선택지)로 모델을 확장시킨 완결판 공식입니다.</li>
+                    <div style="font-size: 1.2rem; background: #ecf0f1; padding: 15px; border-radius: 10px; margin: 15px auto;">
+                        $$ Loss(CE) = - \frac{1}{n} \sum_{i=1}^{n} \sum_{k=1}^{C} y_{i,c} \log(\hat{y}_{i,c}) $$
+                    </div>
+                    <li>수많은 예측 확률값 중, 오직 <span class="highlight">정답 클래스($y_{i,c}=1$)에 대한 예측 확률값</span>에만 $-\log$ 연산을 수행해 Loss 산출</li>
+                    <li><strong>결론:</strong> "정답인 항목의 확률을 얼마나 높게 예측했는가?" 만을 평가하는 효율적인 지표입니다.</li>
+                </ul>
+            </section>
+
+            <!-- Slide 14 -->
+            <section>
+                <h2>8. Next Week</h2>
+                <ul>
+                    <li><strong>챕터 진도 및 복습 (ch6, mml 1~3)</strong><br> : 시험기간 전 주를 고려하여 수학 복습 중심으로 진행합니다.</li>
+                    <li><strong>수학 보충 학습 자료</strong><br> : <a href="https://yung-web.github.io/home/courses/mathml.html" target="_blank" style="color: #3498db;">수학 참고 링크 (클릭)</a></li>
+                    <li><strong>L1, L2 Regularization (과제)</strong><br> : 수식이 어떻게 모델의 과적합을 막아내는지 정리해보기</li>
+                </ul>
+            </section>
+
+        </div>
+    </div>
+
+    <!-- Reveal.js Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.3.1/reveal.js"></script>
+    <script>
+        Reveal.initialize({
+            hash: true,
+            controls: true,
+            progress: true,
+            center: true,
+            // 세로 슬라이드 끄기, 가로 네비게이션만 활성화
+            disableLayout: false,
+            transition: 'slide'
+        });
+    </script>
+</body>
+</html>

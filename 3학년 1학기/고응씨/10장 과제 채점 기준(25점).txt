@@ -1,0 +1,53 @@
+채점 기준(25점)
+1. 문장들을 입력 받아 저장 : 13점
+① 엔터키만 입력될 때까지 입력 받도록 설정 : 2점
+② 입력 받는 데이터 최대 크기에 맞게 배열 크기 설정 : 1점
+③ 입력 받은 문장 크기에 맞게 동적 할당받아 저장 : 5점
+④ 입력 받은 문장 수 만큼 동적 할당 받아 저장 : 5점
+
+2. 검색 단어 입력 받기 : 2점(최대 크기 만족 안하면 1점 감점)
+
+3. 각 문장 별, 검색 단어 사용 횟수 찾기 & 출력 : 10점
+
+4. 동적 메모리 할당시 예외처리와 해제 하지 않으면 3점 감점(한 부분
+이라도 안하면)
+
+5. 입력 받을 때 제외하고 고정크기 배열 사용하면 전체 0 점
+
+
+테스트케이스
+1. 
+do do do
+does DOES do
+i do you do
+ok
+do do do do do do
+(빈칸입력)
+do
+
+
+2.
+apple application pineapple
+apple apples appleapple
+thisappleismine
+aPPlE Apple aPPlE apple
+(빈칸입력)
+apple
+
+
+3.
+C programming
+is
+interesting
+(빈칸입력)
+wow
+
+4.
+(빈칸입력)
+
+5.
+C programming 
+is
+interesting
+(빈칸입력)
+(빈칸입력)
