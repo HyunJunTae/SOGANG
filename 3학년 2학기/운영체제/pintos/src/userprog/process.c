@@ -20,6 +20,7 @@
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
+static void argument_stack (char **argv, int argc, void **esp);
 
 /* Starts a new thread running a user program loaded from
    FILENAME.  The new thread may be scheduled (and may even exit)
@@ -38,8 +39,14 @@ process_execute (const char *file_name)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
 
+  // 프로그램 이름만 추출 (예: "echo x" -> "echo")
+  char prog_name[64];         // 프로그램 이름 담을 빈 배열
+  char *save_ptr;             // strtok_r에서 쓸 포인터
+  strlcpy (prog_name, file_name, sizeof prog_name);       // file_name을 prog_name에 그대로 복사
+  char *real_name = strtok_r (prog_name, " ", &save_ptr); // 공백 단위로 분리하여 프로그램 이름만 추출
+
   /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
+  tid = thread_create (real_name, PRI_DEFAULT, start_process, fn_copy);
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy); 
   return tid;
@@ -216,16 +223,32 @@ load (const char *file_name, void (**eip) (void), void **esp)
   int i;
 
   /* Allocate and activate page directory. */
-  t->pagedir = pagedir_create ();
+  t->pagedir = pagedir_create (); // 이 부분은 문제 없음. thread.h 확인해보면 ifdef으로 정의되어 있음.
   if (t->pagedir == NULL) 
     goto done;
   process_activate ();
 
+
+
+  // ★ 여기서 parsing을 해야함
+  char *argv[128];        // 분리한 명령어들의 주소 하나씩 담을 배열
+  int argc = 0;           // 분리한 명령어들의 개수
+  char *token, *save_ptr; // strtok에서 쓸 포인터
+
+  // 공백 단위로 분리하기
+  for (token = strtok_r ((char *) file_name, " ", &save_ptr); token != NULL;
+       token = strtok_r (NULL, " ", &save_ptr))
+    {
+      argv[argc++] = token;
+    }
+
+
+    
   /* Open executable file. */
-  file = filesys_open (file_name);
+  file = filesys_open (argv[0]);    // argv[0]을 넘기기 -> echo 넘기기
   if (file == NULL) 
     {
-      printf ("load: %s: open failed\n", file_name);
+      printf ("load: %s: open failed\n", argv[0]);
       goto done; 
     }
 
@@ -301,9 +324,22 @@ load (const char *file_name, void (**eip) (void), void **esp)
         }
     }
 
+  
+  
   /* Set up stack. */
   if (!setup_stack (esp))
     goto done;
+
+
+  
+  // ★ 여기를 수정해야한다! -> 여기서 유저 스택에 echo, x 하나씩 넣어줘야함.
+  // 인자들을 유저 스택에 넣어주기.
+  argument_stack (argv, argc, esp);
+
+  // 디버깅용: 스택 메모리 덤프 출력 (과제 완료 후 주석 처리 가능)
+  // hex_dump ((uintptr_t) *esp, *esp, PHYS_BASE - *esp, true);
+
+
 
   /* Start address. */
   *eip = (void (*) (void)) ehdr.e_entry;
@@ -317,6 +353,55 @@ load (const char *file_name, void (**eip) (void), void **esp)
 }
 
 /* load() helpers. */
+
+// 80x86 호출 규약에 따라 파싱된 인자들을 유저 스택에 푸시
+static void
+argument_stack (char **argv, int argc, void **esp)
+{
+  int i;
+  uint32_t argv_addr[128];
+
+  // 1. 문자열 인자들을 스택에 역순으로 푸시 (echo x 면 x -> echo 순으로)
+  for (i = argc - 1; i >= 0; i--)
+    {
+      size_t len = strlen (argv[i]) + 1; // '\0' 널 종료 문자 포함
+      *esp -= len;
+      memcpy (*esp, argv[i], len);
+      argv_addr[i] = (uint32_t) *esp;   // 스택에 저장된 해당 인자의 시작 주소 기억 (나중에 이거도 푸시해야함)
+    }
+
+  // 2. Word-alignment
+  int align = (uintptr_t) *esp % 4;
+  if (align != 0)
+    {
+      *esp -= align;
+      memset (*esp, 0, align);
+    }
+
+  // 3. argv[argc] = NULL 푸시
+  *esp -= 4;
+  *(uint32_t *) *esp = 0;
+
+  // 4. 각 문자열 인자들의 시작 주소를 역순으로 푸시
+  for (i = argc - 1; i >= 0; i--)
+    {
+      *esp -= 4;
+      *(uint32_t *) *esp = argv_addr[i];
+    }
+
+  // 5. argv의 주소 (argv[0]의 주소가 들어있는 스택 주소) 푸시
+  uint32_t argv_start = (uint32_t) *esp;
+  *esp -= 4;
+  *(uint32_t *) *esp = argv_start;
+
+  // 6. argc (인자 개수) 푸시
+  *esp -= 4;
+  *(int *) *esp = argc;
+
+  // 7. Fake return address (가짜 반환 주소: 0) 푸시
+  *esp -= 4;
+  *(uint32_t *) *esp = 0;
+}
 
 static bool install_page (void *upage, void *kpage, bool writable);
 

@@ -1,0 +1,2886 @@
+--- ppt/slides/slide1.xml ---
+Project #1: User Program
+[CSE4070]
+Fall 2026
+Teaching Assistants
+Seong Jang (01), 
+Taewan
+ Noh (01)
+Seungjae
+ Lee (02), Myoungjoon Kim (02)
+Instructors
+Prof. 
+Youngjae
+ Kim (01)
+Prof. 
+Sungyong
+ Park (02)
+
+--- ppt/slides/slide2.xml ---
+Contents
+Prerequisites
+Background
+How User Program Works
+Code Level Flow
+Virtual Memory 
+System Calls
+Requirements
+Process Termination Messages
+Argument Passing
+System Calls
+Base File System
+File System Call Implementation
+Suggested Order of Implementation
+Evaluation
+Documentation
+Submission
+2
+
+--- ppt/slides/slide3.xml ---
+Prerequisites
+
+--- ppt/slides/slide4.xml ---
+~/pintos/
+src
+/
+userprog
+ $ 
+pintos --
+filesys
+-size=2 -p ../examples/echo -a echo -- -f -q run 'echo x'
+Background
+4
+Do not miss to type "--" (two hyphens!).
+It seems that the 'echo’ program has been run properly, but...
+Pintos is a simple OS which can boot, execute an application, and power off.
+Run 'echo' application on Pintos first. 
+(
+Run 'make' in 
+src
+/examples and
+ 
+src
+/
+userprog
+ first)
+style.visibility
+
+--- ppt/slides/slide5.xml ---
+~/pintos/
+src
+/
+userprog
+ $ 
+pintos --
+filesys
+-size=2 -p ../examples/echo -a echo -- -f -q run 'echo x'
+Background
+Pintos is a simple OS which can boot, execute an application, and power off.
+Run 'echo' application on Pintos first. 
+(
+Run 'make' in 
+src
+/examples and
+ 
+src
+/
+userprog
+ first)
+5
+Do not miss to type "--" (two hyphens!).
+We can not see the result of 'echo x'
+because of 
+lack of implementation.
+We should be able to see 'x’.
+style.visibility
+style.visibility
+
+--- ppt/slides/slide6.xml ---
+Background
+Why can't we see the result of 'echo' command?
+It is because, in current Pintos, 
+system call, system call handler, argument passing, and user stack
+ have not been implemented. 
+Basically, current Pintos does not implement many OS functionalities, including those above.
+6
+
+--- ppt/slides/slide7.xml ---
+Background
+In this project, students will have to make the Pintos 
+be able to execute user programs properly.
+Students should work in the following directories and modify the following files: 
+7
+{21E4AEA4-8DFA-4A89-87EB-49C32662AFE0}
+Files to be modified
+Referenced files 
+src
+/
+userprog
+process.h
+ 
+/
+ 
+process.c
+syscall.h
+ / 
+syscall.c
+pagedir.h
+ / 
+pagedir.c
+exception.h
+ / 
+exception.c
+ 
+src
+/
+threads
+thread.h
+ / 
+thread.c
+synch.h
+ / 
+synch.c
+vaddr.h
+src
+/
+devices
+-
+shutdown.h
+ / 
+shutdown.c
+input.h
+ / 
+input.c
+src
+/
+lib
+syscall-nr.h
+user/
+syscall.h
+user/
+syscall.c
+-
+
+--- ppt/slides/slide8.xml ---
+How User Program Works
+Procedure: 
+Pintos can load and run 
+regular ELF(Executable & Linkable Format) 
+executables.
+To run a user program, we must copy (put) the user program to the simulated file system disk.
+H/W
+Linux (Ubuntu)
+QEMU
+Pintos
+User Programs
+CSPRO server
+Ubuntu
+QEMU
+Pintos
+Disk
+Simulated
+Pintos disk
+User program 
+for Pintos
+PUT
+8
+style.visibility
+style.visibility
+style.visibility
+style.visibility
+style.visibility
+
+--- ppt/slides/slide9.xml ---
+How User Program Works
+Consider the previous example more in detail
+"--
+filesys
+-size=2": 
+Make simulated Pintos disk which consists of 2MB
+"-p ../examples/echo 
+-a
+ echo": 
+Copy '../examples/echo' into the simulated disk and 
+change the name 
+from '../examples/echo' to 'echo'
+"--" between echo and -f: 
+Separate pintos' options and kernel arguments
+"-f": 
+Pintos formats the simulated disk.
+"-q": 
+Pintos will be terminated after execution of 'echo’.
+"run 'echo x'": 
+Pintos will execute 'echo' with argument 'x’.
+~/pintos/
+src
+/
+userprog
+ $ 
+pintos --
+filesys
+-size=2 -p ../examples/echo -a echo -- -f -q run 'echo x'
+9
+
+--- ppt/slides/slide10.xml ---
+How User Program Works
+Consider the previous example more in detail
+'echo' is the application that writes arguments to the 
+standard output
+.
+Thus, 'echo' needs the
+ 
+I/O functionality provided by system call
+ 
+in the kernel.
+And, it also needs user stack implementation which stores arguments and passes them to kernel.
+But, Pintos has no implementation for 
+system calls 
+and 
+user stacks
+.
+~/pintos/
+src
+/
+userprog
+ $ 
+pintos --
+filesys
+-size=2 -p ../examples/echo -a echo -- -f -q run 'echo x'
+That's why we were not able to see the result of 'echo x’.
+10
+style.visibility
+
+--- ppt/slides/slide11.xml ---
+Code Level Flow
+$ pintos --
+filesys
+-size=2 -p ../examples/echo -a echo -- -f -q run 
+'echo x'
+{21E4AEA4-8DFA-4A89-87EB-49C32662AFE0}
+threads/
+init.c
+int
+ main()
+{
+    …
+    
+syscall_init
+();
+    …
+    
+run_actions
+(
+argv
+);
+    … 
+}
+{21E4AEA4-8DFA-4A89-87EB-49C32662AFE0}
+threads/
+init.c
+void 
+run_task
+(){
+    …
+    
+process_wait
+(
+process_execute
+(task));
+    ...
+}
+{21E4AEA4-8DFA-4A89-87EB-49C32662AFE0}
+userprog
+/
+process.c
+tid_t
+ 
+process_execute
+(){
+    …
+    
+thread_create
+(…, 
+start_process
+, …);
+    …
+}
+{21E4AEA4-8DFA-4A89-87EB-49C32662AFE0}
+userprog
+/
+process.c
+bool load(filename, ){
+     …
+     
+TODO
+: parse file
+ name 
+     
+filesys_open
+(…);
+     …
+    
+ 
+setup_stack
+(
+esp
+);
+     
+TODO
+: construct stack
+}
+{21E4AEA4-8DFA-4A89-87EB-49C32662AFE0}
+userprog
+/
+process.c
+static void 
+start_process
+(){
+    …
+    
+load(filename);
+    ….
+}
+{21E4AEA4-8DFA-4A89-87EB-49C32662AFE0}
+threads/
+init.c
+Static void 
+run_actions
+(){
+    …
+    {“run”, 2, 
+run_task
+}
+    … 
+    
+a->function (
+argv
+);
+}
+※ Go to 
+'Argument Passing'
+11
+'echo x'
+
+--- ppt/slides/slide12.xml ---
+Code Level Flow
+$ pintos --
+filesys
+-size=2 -p ../examples/echo -a echo -- -f -q run 
+'echo x'
+{21E4AEA4-8DFA-4A89-87EB-49C32662AFE0}
+threads/
+init.c
+int
+ main()
+{
+    …
+    
+syscall_init
+();
+    …
+    
+run_actions
+(
+argv
+);
+    … 
+}
+{21E4AEA4-8DFA-4A89-87EB-49C32662AFE0}
+threads/
+init.c
+void 
+run_task
+(){
+    …
+    
+process_wait
+(
+process_execute
+(task));
+    ...
+}
+{21E4AEA4-8DFA-4A89-87EB-49C32662AFE0}
+userprog
+/
+process.c
+tid_t
+ 
+process_execute
+(){
+    …
+    
+thread_create
+(…, 
+start_process
+, …);
+    …
+}
+{21E4AEA4-8DFA-4A89-87EB-49C32662AFE0}
+userprog
+/
+process.c
+bool load(filename, ){
+     …
+     
+TODO
+: parse file
+ name 
+     
+filesys_open
+(…);
+     …
+    
+ 
+setup_stack
+(
+esp
+);
+     
+TODO
+: construct stack
+}
+{21E4AEA4-8DFA-4A89-87EB-49C32662AFE0}
+userprog
+/
+process.c
+static void 
+start_process
+(){
+    …
+    
+load(filename);
+    ….
+}
+{21E4AEA4-8DFA-4A89-87EB-49C32662AFE0}
+threads/
+init.c
+Static void 
+run_action
+(){
+    …
+    {“run”, 2, 
+run_task
+}
+    … 
+}
+{0E3FDE45-AF77-4B5C-9715-49D594BDF05E}
+Options for pintos utility
+'-' for single character option
+'--' for multiple characters option
+(You can read option executing 'pintos --help')
+{0E3FDE45-AF77-4B5C-9715-49D594BDF05E}
+Separator between pintos options and Pintos kernel arguments
+12
+
+--- ppt/slides/slide13.xml ---
+Code Level Flow
+$ pintos --
+filesys
+-size=2 -p ../examples/echo -a echo -- -f -q run 
+'echo x'
+{21E4AEA4-8DFA-4A89-87EB-49C32662AFE0}
+threads/
+init.c
+int
+ main()
+{
+    …
+    
+syscall_init
+();
+    …
+    
+run_actions
+(
+argv
+);
+    … 
+}
+{21E4AEA4-8DFA-4A89-87EB-49C32662AFE0}
+threads/
+init.c
+void 
+run_task
+(){
+    …
+    
+process_wait
+(
+process_execute
+(task));
+    ...
+}
+{21E4AEA4-8DFA-4A89-87EB-49C32662AFE0}
+userprog
+/
+process.c
+tid_t
+ 
+process_execute
+(){
+    …
+    
+thread_create
+(…, 
+start_process
+, …);
+    …
+}
+{21E4AEA4-8DFA-4A89-87EB-49C32662AFE0}
+userprog
+/
+process.c
+bool load(filename, ){
+     …
+     
+TODO
+: parse file name
+     
+filesys_open
+(…);
+     …
+    
+ 
+setup_stack
+(
+esp
+);
+     
+TODO
+: construct stack
+}
+{21E4AEA4-8DFA-4A89-87EB-49C32662AFE0}
+userprog
+/
+process.c
+static void 
+start_process
+(){
+    …
+    
+load(filename);
+    ….
+}
+{21E4AEA4-8DFA-4A89-87EB-49C32662AFE0}
+threads/
+init.c
+Static void 
+run_action
+(){
+    …
+    {“run”, 2, 
+run_task
+}
+    … 
+}
+{0E3FDE45-AF77-4B5C-9715-49D594BDF05E}
+“x”
+“echo”
+<word
+ align
+>
+NULL
+&“x”
+&“echo”
+&
+argv
+2
+0
+{0E3FDE45-AF77-4B5C-9715-49D594BDF05E}
+“echo” , “x”
+Setup user stack based on 80x86 calling convention
+13
+
+--- ppt/slides/slide14.xml ---
+Virtual Memory
+Pintos divides memory into two region, user memory and kernel memory.
+If we use these memory areas directly, it's 
+hard to manage memory
+.
+For example, 
+① 
+e
+ach process can damage each other
+.
+②
+ 
+the process can corrupt kernel code 
+that is critical to running the operating system.
+app1
+kernel
+app2
+kernel
+app2
+app1
+app1
+kernel
+app2
+app1
+kernel
+app2
+①
+②
+14
+
+--- ppt/slides/slide15.xml ---
+Virtual Memory
+To prevent these problems, operating systems adopt 
+virtual memory system
+.
+Because of virtual memory, 
+each process can have its own memory area 
+and use it as if the process occupies the whole memory.
+Pintos also manages memory regions by virtual memory
+.
+Virtual memory is also divided into two regions: 
+user virtual memory 
+and
+ 
+kernel virtual memory
+.
+15
+
+--- ppt/slides/slide16.xml ---
+Virtual Memory: Launch Application
+Physical Memory
+0 GB
+1 GB
+↓ Kernel
+↑ User
+16
+
+--- ppt/slides/slide17.xml ---
+Virtual Memory: Launch Application
+pgd
+Physical Memory
+0 GB
+1 GB
+pgd
+Virtual Memory
+App1
+3 GB
+PHYS_BASE
+Kernel ↑
+User ↓
+Kernel virtual memory is global.
+4 GB
+0 GB
+17
+↓ Kernel
+↑ User
+page
+directory
+for App1
+
+--- ppt/slides/slide18.xml ---
+Virtual Memory: Launch Application
+pgd
+pgd
+Physical Memory
+0 GB
+1 GB
+pgd
+pgd
+3 GB
+4 GB
+Virtual Memory
+App1
+3 GB
+4 GB
+0 GB
+0 GB
+Virtual Memory
+App2
+PHYS_BASE
+18
+↓ Kernel
+↑ User
+Kernel ↑
+User ↓
+page
+directory
+for App1
+page
+directory
+for App2
+Kernel virtual memory is global.
+
+--- ppt/slides/slide19.xml ---
+Virtual Memory in Pintos
+Each process has its own user virtual memory.
+Pintos allocates 1 GB to kernel as global memory.
+(PHYS_BASE (3 GB) ~ 4 GB in virtual memory)
+Memory unit is a page in Pintos, which is size of 4 KB.
+User program can access physical memory by translating virtual address via
+page directory and page table.
+(Refer to A.7 'Page Table')
+19
+
+--- ppt/slides/slide20.xml ---
+Virtual Memory
+Functions for page
+threads/
+vaddr.h
+is_user_vaddr
+(), 
+is_kernel_vaddr
+()
+Check that given virtual address is user/kernel virtual address
+ptov
+(), 
+vtop
+()
+Translate physical address to kernel virtual address and vice versa
+threads/
+palloc.c
+palloc_get_page
+()
+Get page from user/kernel memory pool
+userprog
+/
+pagedir.c
+pagedir_create
+()
+Create page directory
+pagedir_get_page
+()
+Look up the physical address that corresponds to user virtual address in	page directory
+pagedir_set_page
+()
+Add mapping in page directory from user virtual address to the physical page
+20
+
+--- ppt/slides/slide21.xml ---
+System Calls
+As we've seen, Pintos divides memory into user virtual memory and kernel virtual memory to protect each process and kernel code.
+Along with the concept of virtual memory, OS prevents user program from accessing the kernel memory which contains core functionalities.
+Then, how user program uses kernel's functionality?
+OS provides 
+system calls 
+to solve this problem.
+21
+
+--- ppt/slides/slide22.xml ---
+System Calls
+For safety, operating system provides two types of mode, user and kernel mode.
+When user program is run in user mode, it can not access memory or disk
+.
+These operations are performed in 
+kernel mode
+.
+OS provides 
+system calls
+ to enter kernel mode.
+User Memory Area
+Kernel Memory Area
+File
+System
+Memory
+Management
+Process
+Scheduling
+App1
+App2
+App3
+System Calls
+22
+
+--- ppt/slides/slide23.xml ---
+System Calls
+Pintos provides 
+user level interface 
+of system calls in 'lib/user/
+syscall.c
+'
+and 
+skeleton of system call handler
+ in '
+userprog
+/
+syscall.c
+’.
+23
+H/W
+Linux (Ubuntu)
+QEMU
+Pintos
+Pintos User Programs
+User Memory Area
+Kernel Memory Area
+Pintos
+Kernel
+Pintos
+User Programs
+QEMU
+System Calls
+23
+
+--- ppt/slides/slide24.xml ---
+System Calls
+Procedure of system call in Pintos
+User programs call system call function.
+open() system call
+* source code: examples/
+cat.c
+24
+
+--- ppt/slides/slide25.xml ---
+System Calls
+Procedure of system call in Pintos
+System call number 
+and additional 
+arguments
+ are pushed on caller's stack.
+Invoke interrupt for system call by using 
+'int $0x30'
+ instruction
+User Stack
+Arguments
+System Call
+Number
+* source code: 
+lib/user/
+syscall.c
+esp
+After returning from system call handler,
+restore stack pointer.
+esp
+25
+esp
+style.visibility
+style.visibility
+style.visibility
+style.visibility
+style.visibility
+style.visibility
+style.visibility
+style.visibility
+style.visibility
+style.visibility
+style.visibility
+style.visibility
+style.visibility
+style.visibility
+style.visibility
+style.visibility
+style.visibility
+style.visibility
+style.visibility
+style.visibility
+style.visibility
+
+--- ppt/slides/slide26.xml ---
+System Calls
+Procedure of system call in Pintos
+Set the stack for interrupt and call interrupt handler
+* source code: threads/
+intr-stubs.S
+Call interrupt handler
+26
+
+--- ppt/slides/slide27.xml ---
+System Calls
+Procedure of system call in Pintos
+intr_handler
+() 
+calls system call hander.
+* source code: threads/
+interrupt.c
+Interrupt handler for 
+system call handler 
+has already been registered while Pintos was booting.
+※ Refer to the following function calls:
+1) 
+main()
+ 
+in 'threads/
+init.c
+' calls 
+syscall_init
+()
+ 
+which is in '
+userprog
+/
+syscall.c
+'
+2) 
+syscall_init
+() 
+calls 
+intr_register_int
+() 
+in 'threads/
+interrupt.c
+'
+※
+27
+
+--- ppt/slides/slide28.xml ---
+System Calls
+Procedure of system call in Pintos
+syscall_handler
+() 
+gets control, and it can access the stack via 
+'
+esp
+'
+ member of the
+ 
+struct 
+intr_frame
+ 
+(in threads/
+interrupt.h
+).
+80x86 convention stores return value of system call in EAX register so that we can store the return value in 
+'
+eax
+'
+ member of the 
+struct 
+intr_frame
+.
+* source code: 
+userprog
+/
+syscall.c
+※ Pintos provides skeleton of system call handler.
+   We will develop this in this project!
+28
+style.visibility
+style.visibility
+
+--- ppt/slides/slide29.xml ---
+010101011101001010010
+What is File system?
+29
+HDD
+Access
+ext4
+User
+Prj1-2
+
+--- ppt/slides/slide30.xml ---
+Requirements
+
+--- ppt/slides/slide31.xml ---
+Process Termination Messages
+When user program is terminated, kernel prints termination messages.
+Output form is as follows:
+Refer to Pintos manual 3.3.2
+{0E3FDE45-AF77-4B5C-9715-49D594BDF05E}
+Refer to the following functions
+threads/
+thread.c
+: 
+thread_exit
+()
+userprog
+/
+process.c
+: 
+process_exit
+()
+31
+<tests/
+userprog
+/exec-
+once.ck
+>
+Process Name: exit(exit status)\n
+
+--- ppt/slides/slide32.xml ---
+Process Termination Messages
+32
+How can we get a process name?
+Refer to 
+struct thread
+
+--- ppt/slides/slide33.xml ---
+Process Termination Messages
+33
+How is user program terminated? 
+When ELF user program runs, 
+_start()
+ in lib/user/
+entry.c
+ is called at first.
+After executing the program, 
+exit() 
+system call is called.
+Pintos only provides exit() system call API, but the 
+exit() system call API
+ has not yet been  implemented.
+
+--- ppt/slides/slide34.xml ---
+Process Termination Messages
+34
+How is the user program terminated? 
+Flow of function calls
+exit() in lib/user/
+syscall.c
+-> syscall1 (SYS_EXIT, status) in lib/user/
+syscall.c
+-> 
+syscall_handler
+() in 
+userprog
+/
+syscall.c
+-> 
+thread_exit
+() in threads/
+thread.c
+-> 
+process_exit
+() in 
+userprog
+/
+process.c
+Refer to slide pg. 25-29
+
+--- ppt/slides/slide35.xml ---
+Argument Passing
+User program can have multiple arguments.
+Parse the arguments and allocate it to memory according to 80x86 calling convention
+Refer to the next slides and Pintos manual 3.5
+Assume that the length of arguments is less than 4 KB
+Test programs use less than 128 Bytes as arguments.
+35
+<User virtual memory in Pintos>
+
+--- ppt/slides/slide36.xml ---
+Argument Passing
+“/bin/ls -l foo bar” will be parsed into “/bin/ls”, “-l”, “foo”, “bar”
+36
+
+--- ppt/slides/slide37.xml ---
+Argument Passing
+“/bin/ls -l foo bar” will be parsed into “/bin/ls”, “-l”, “foo”, “bar”
+You can start implementation of argument passing after the following function.
+userprog
+/
+process.c
+ : static bool 
+setup_stack
+(void **
+esp
+)
+Refer to 
+'Code Level Flow'
+ in the previous chapter
+  0xC0000000 (PHYS_BASE)
+- 0x00000004
+-------------
+  0xBFFFFFFC
+37
+
+--- ppt/slides/slide38.xml ---
+Argument Passing
+“/bin/ls -l foo bar” will be parsed into “/bin/ls”, “-l”, “foo”, “bar”
+Push arguments at the top of the stack
+38
+
+--- ppt/slides/slide39.xml ---
+Argument Passing
+“/bin/ls -l foo bar” will be parsed into “/bin/ls”, “-l”, “foo”, “bar”
+Push address of each argument
+NULL pointer sentinel
+(required by C standard)
+39
+
+--- ppt/slides/slide40.xml ---
+Argument Passing
+“/bin/ls -l foo bar” will be parsed into “/bin/ls”, “-l”, “foo”, “bar”
+result of 
+hex_dump
+() 
+: This function is very useful for debug (in 
+src
+/lib/
+stdio.c
+). 
+Top of the stack
+foo\0
+bar\0
+0xbffffffc
+0xbffffff8
+40
+
+--- ppt/slides/slide41.xml ---
+Argument Passing
+In 
+userprog
+/
+process.c
+, there is 
+setup_stack
+()
+ which allocates a minimal stack page (4KB).
+Since the given code only allocates stack page, we need to make up the stack after 
+setup_stack
+().
+Make up the stack referring to 
+"3.5 80x86 Calling Convention"
+ in Pintos manual
+41
+Write codes here!
+
+--- ppt/slides/slide42.xml ---
+System Calls
+Students will have to implement the following system calls 
+(
+Requirements
+ of each system call are described in
+ 
+Pintos manual 3.3.4
+.)
+[Prj1-1]
+halt, exit, exec, wait, 
+read, write
+(※ Pintos exec is different from UNIX exec)
+Two new system calls (
+fibonacci
+, 
+max_of_four_int
+) 
+[Prj1-2]
+create, remove, open, close, 
+filesize
+, seek, tell, 
+read, write
+   (full implementation)
+read / write 
+are implemented in two stages
+Prj1-1: standard input/output only (STDIN=0, STDOUT=1)
+Prj1-2: extend to files using file descriptor
+42
+
+--- ppt/slides/slide43.xml ---
+System Calls: General System Calls
+halt()
+Terminate Pintos by calling 
+shutdown_power_off
+()
+exit()
+Terminate the current user program, returning status to the kernel
+43
+
+--- ppt/slides/slide44.xml ---
+System Calls: General System Calls
+exec()
+Create child process
+Refer to 
+process_execute
+()
+ 
+in 
+userprog
+/
+process.c
+wait()
+What wait() system call should do is 
+wait child process until it finishes its work
+.
+Check that child thread ID is valid
+Get the exit status from child thread when the child thread is dead
+To prevent termination of process before return from wait(), 
+you can use 
+busy waiting technique
+* or 
+thread_yield
+()
+ 
+in threads/
+thread.c
+.
+* Busy waiting means the codes 
+do nothing 
+and just keep checking condition over and over
+44
+
+--- ppt/slides/slide45.xml ---
+System Calls: General System Calls
+write() and read()
+Not full implementation, but at least read from STDIN, write to STDOUT. 
+File Descriptor of STDIN, STDOUT
+STDIN = 0, STDOUT = 1
+Use the following function to implement read(0)
+pintos/
+src
+/devices/
+input.c
+: uint8_t 
+input_getc
+(void)
+Use the following function to implement write(1)
+pintos/
+src
+/lib/kernel/
+console.c
+: void 
+putbuf
+(…)
+45
+
+--- ppt/slides/slide46.xml ---
+System Calls: Code Level Flow
+Start from 
+main() 
+in threads/
+init.c
+run_actions
+ (
+argv
+); 
+will be invoked.
+46
+* threads/
+init.c
+
+--- ppt/slides/slide47.xml ---
+System Calls: Code Level Flow
+Focus on {"run", 2, 
+run_task
+}
+a->function (
+argv
+); 
+invokes 
+run_task
+()
+.
+47
+* threads/
+init.c
+
+--- ppt/slides/slide48.xml ---
+System Calls: Code Level Flow
+run_task
+() 
+invokes 
+process_execute
+()
+.
+48
+What does 'task' contain?
+Does it contain only file name?
+Refer to 
+printf
+ statement
+strtok_r
+() 
+in lib/
+string.c
+ will help you.
+* threads/
+init.c
+
+--- ppt/slides/slide49.xml ---
+System Calls: Code Level Flow
+thread_create
+() 
+will enroll user program name.
+And, it also enrolls function, 
+start_process
+()
+, which will launch user program.
+49
+* 
+userprog
+/
+process.c
+
+--- ppt/slides/slide50.xml ---
+System Calls: Code Level Flow
+When process scheduling is invoked, the child process (user program) will be executed by wrapper function of 
+_start() 
+in lib/user/
+entry.c
+.
+50
+* lib/user/
+entry.c
+
+--- ppt/slides/slide51.xml ---
+System Calls: Code Level Flow
+When ELF executable (user program) is finished, 
+exit() 
+system call is called.
+After 
+exit() 
+system call, it returns to 
+process_wait
+()
+.
+51
+* lib/user/
+entry.c
+
+--- ppt/slides/slide52.xml ---
+System Calls: Code Level Flow
+Parent process which ran 
+process_execute
+() 
+should be waiting in 
+process_wait
+()
+ until the child process is finished.
+52
+* threads/
+init.c
+
+--- ppt/slides/slide53.xml ---
+System Calls: Source Codes
+lib/user/
+syscall.h
+ and lib/user/
+syscall.c
+APIs
+ for system calls are already given in Pintos code.
+You don't have to add something for system call 
+APIs
+.
+userprog
+/
+syscall.h
+There is only one prototype 
+syscall_init
+() 
+which registers system call interrupts when Pintos was booted.
+You can write prototype of system calls in this file.
+userprog
+/
+syscall.c
+You must make 
+syscall_handler
+() 
+handle system calls.
+If you have done argument passing, you can get system call number from 
+intr_frame
+ *f
+.
+esp
+ member of 
+intr_frame
+ *f
+ points to system call number.
+(You can refer to 
+lib/
+syscall-nr.h
+ 
+to check each system call number)
+And then you can use 
+switch
+ statement to classify system calls.
+(What really these system calls do would be written here.)
+53
+
+--- ppt/slides/slide54.xml ---
+Additional System Calls
+Implement new system calls into Pintos
+int 
+fibonacci
+(int n)
+Return N 
+th
+ value of Fibonacci sequence
+int 
+max_of_four_int
+(int a, int b, int c, int d)
+Return the maximum of a, b, c and d
+※ Use '
+fibonacci
+' and '
+max_of_four_int
+' as the name of new system calls.
+   Don't use other name to implement new system calls above.
+54
+
+--- ppt/slides/slide55.xml ---
+Additional System Calls
+Write user level program which uses new system calls
+Make 
+additional.c
+ in pintos/
+src
+/examples
+Write simple example by using new system calls
+Name of execution file should be 'additional'
+Usage    : ./additional [num 1] [num 2] [num 3] [num 4]
+Function : Print the result of '
+fibonacci
+' system call using [num 1] as parameter 
+       
+      
+ Print the result of '
+max_of_four_int
+'
+ 
+system call using [num 1, 2, 3, 4] as
+ 
+parameter
+Example :
+Run the following command to check your program works properly.
+$ ./additional 10 20 62 40
+55 62
+pintos/
+src
+/
+userprog
+$
+ 
+pintos --
+filesys
+-size=2 -p ../examples/additional -a additional -- -f -q run 'additional 10 20 62 40'
+55
+'additional' should be run on Pintos, not 
+CSPRO
+ server.
+
+--- ppt/slides/slide56.xml ---
+Additional System Calls
+How to identify system call number?
+Refer to 'lib/
+syscall-nr.h
+’
+How to return system call's result?
+Check argument 
+'struct 
+intr_frame'
+of
+ 
+syscall_handler
+()
+ in 
+syscall.c
+Refer to 
+'System Calls'
+ in Prerequisites
+56
+
+--- ppt/slides/slide57.xml ---
+Additional System Calls
+To compile newly added user program, "additional", you need to modify 
+Makefile
+ in
+ 
+src
+/examples
+.
+Refer to how other user programs are written in 
+Makefile
+57
+
+--- ppt/slides/slide58.xml ---
+Additional System Calls: Source Codes
+lib/user/
+syscall.h
+Write prototype of 2 new system call APIs
+lib/user/
+syscall.c
+Define new 
+syscall4() 
+function for 
+max
+_of_four_int
+()
+ 
+(lib/user/syscall.c)
+Define 
+fibonacci
+() 
+and 
+max
+_of_four_int
+() 
+system calls 
+APIs
+lib/
+syscall-nr.h
+Add system call numbers for 2 new system calls
+userprog
+/
+syscall.h
+Write prototype of 2 new system calls
+userprog
+/
+syscall.c
+Define 
+fibonacci
+() 
+and 
+max_of_four_int
+() 
+system calls
+What really these system calls do would be written here.
+58
+
+--- ppt/slides/slide59.xml ---
+Accessing User Memory
+User program can pass an invalid pointer.
+NULL
+ pointer such as 
+open (NULL); 
+in tests/
+userprog
+/open-
+null.c
+Unmapped
+ virtual memory
+Pointer to 
+kernel
+ address space
+Invalid pointers must be rejected 
+without harm to kernel or other running process.
+It can be implemented in 2 ways:
+Verify the 
+validity of a user-provided pointer
+, then dereference it.
+Check only that a user pointer points below PHYS_BASE, then dereference it. 
+If the pointer is invalid, it will cause a “page fault”. You can handle it by modifying the code 
+page_fault
+()
+ in ‘
+userprog
+/
+exception.c
+’ 
+Refer to Pintos manual 3.1.5
+59
+
+--- ppt/slides/slide60.xml ---
+Accessing User Memory
+0xc0000000 (3 GB)
+Mapped User Virtual Memory
+Unmapped User Virtual Memory
+Refer to Pintos manual 3.1.4
+60
+
+--- ppt/slides/slide61.xml ---
+Accessing User Memory
+To verify the validity of a user-provided pointer, you can use functions in 
+userprog
+/
+pagedir.c
+ and 
+threads/
+vaddr.h
+.
+Check 
+Unmapped
+ virtual memory using 
+pagedir_get_page
+() 
+Check pointer to 
+kernel
+ address space using 
+is_user_vaddr
+() 
+and 
+is_kernel_vaddr
+()
+Use these functions to verify the validity of given pointer
+61
+
+--- ppt/slides/slide62.xml ---
+Base File System
+Prj1-2
+
+--- ppt/slides/slide63.xml ---
+Base File System
+To implement system call about file system,
+we need to understand base file system of Pintos
+We need to interface to the file system code. So, we need to know 
+API usage
+.
+Pintos provides simple but complete file system. 
+(Look 
+filesys.h
+ 
+and 
+file.h
+ at 
+filesys
+/
+)
+Don’t need to understand whole structure of file system.
+No need to modify the file system code for this project.
+63
+
+--- ppt/slides/slide64.xml ---
+Base File System
+Limitation of Base File System (See also p.23-24):
+No internal synchronization
+File size is fixed at creation time
+File data is allocated as a contiguous range of sectors on disks
+No subdirectories
+File name length limitation (up to 14 characters)
+64
+
+--- ppt/slides/slide65.xml ---
+Base File System
+Usage about file system on project 1 
+There is no sub-directories.
+We assume that we work on root directory ( / ) of file system.
+File access at Kernel
+Can access through 
+struct
+ file 
+(See 
+filesys
+/
+file.c
+)
+(At this project, it doesn’t need to access on 
+inode
+ level)
+65
+
+--- ppt/slides/slide66.xml ---
+File System Call Implementation
+Prj1-2
+
+--- ppt/slides/slide67.xml ---
+File System Call Implementation
+Basic file system usage interfaces:
+67
+fopen
+(…) / open(…)
+Interrupt & 
+System call handling
+open(…)
+Call 
+fopen
+(or open)
+ at user program
+Interrupt 0x30 and
+call system call handler 
+Call 
+open
+ system call
+At internal implementation of 
+open
+,
+it calls 
+filesys_open
+ function and open that file
+User
+Kernel
+filesys_open
+(…)
+We need to implement
+
+--- ppt/slides/slide68.xml ---
+File System Call Implementation
+Example in Pintos
+68
+System call acts like interfaces for calling 
+file_xxx
+
+--- ppt/slides/slide69.xml ---
+File System Call Implementation
+File Descriptor (Similar to 
+FILE *
+ of standard C)
+Return value of 
+open
+, 
+create
+At Pintos, each thread get and manage independent file descriptor.
+File descriptor of STDIN, STDOUT, STDERR
+STDIN = 0
+STDOUT = 1
+(At Linux or other OSes, STDERR = 2)
+69
+
+--- ppt/slides/slide70.xml ---
+File System Call Implementation
+read
+ and 
+write 
+with
+ 
+stdin
+/
+stdout
+Read from 
+stdin
+ – read(0)
+Use 
+uint8_t
+ 
+input_getc
+(void)
+ (
+devices/
+input.c
+)
+Write to 
+stdout
+ – write(1)
+Use 
+void
+ 
+putbuf
+(…) 
+(
+lib/kernel/
+console.c
+)
+70
+
+--- ppt/slides/slide71.xml ---
+Useful APIs
+filesys
+/
+filesys.h
+filesys
+/
+file.h
+71
+Kernel Functions
+
+--- ppt/slides/slide72.xml ---
+Denying Writes to Executable files
+Process is executed after load to memory.
+So, removing executable file may not be a problem after executed.
+But Pintos doesn’t want to delete executable file of running program.
+These file system function may be useful for this problem:
+void
+ 
+file_deny_write
+(
+struct
+ file *)
+ (
+filesys
+/
+file.c
+)
+void
+ 
+file_allow_write
+(
+struct
+ file *)
+ (
+filesys
+/
+file.c
+)
+72
+
+--- ppt/slides/slide73.xml ---
+Protect Critical Section
+Critical Section
+N Processes all competing to use some shared data
+Each Process has a code segment, called 
+critical section
+, in which the 
+shared data is accessed
+Problem: Ensure that when one process is executing in its critical section, 
+no other process can execute
+ in its critical section
+Using test case of Pintos, check code segment that should be considered as critical section
+Protect this code segment using synchronization APIs.
+ex) 
+syn
+-read, 
+syn
+-write
+73
+
+--- ppt/slides/slide74.xml ---
+Critical Section – Example in Pintos
+74
+thread 1
+thread 2
+read
+write
+User
+Kernel
+syscall_handler
+read
+write
+file_read
+file_write
+/foo.txt
+Need synchronization
+
+--- ppt/slides/slide75.xml ---
+Synchronization APIs (See also p.67-68)
+Lock
+75
+
+--- ppt/slides/slide76.xml ---
+Synchronization APIs (See also p.67-68)
+Semaphore
+76
+
+--- ppt/slides/slide77.xml ---
+Suggested Order of Implementation (1)
+You can not see the result until you implement core functionalities.
+Students are highly encouraged to read/understand these slides and Pintos manual first, design the structures and then start to implement.
+Argument Passing
+: 
+After implementing it, check the result using 
+hex_dump
+().
+User Memory Access
+: 
+Protect user memory accesses from system calls.
+System Call Handler
+: 
+Implement 
+syscall_handler
+() to handle
+ 
+system call.
+System Call Implementation
+:
+ Implement 
+exec(), exit(), write(), read() 
+first, and then others.
+Additional Implementation
+: 
+Implement 
+fibonacci
+(), 
+max_of_four_int
+().
+77
+Refer to Pintos manual 3.2
+※ Refer to source codes in 
+src
+/tests/
+userprog
+
+--- ppt/slides/slide78.xml ---
+※ Refer to source codes in 
+src
+/tests/
+userprog
+Suggested Order of Implementation (1)
+You can not see the result until you implement core functionalities.
+Students are highly encouraged to read/understand these slides and Pintos manual first, design the structures and then start to implement.
+Argument Passing:
+ 
+After implementing it, check the result using 
+hex_dump
+()
+User Memory Access
+: 
+Make a plan for protecting user memory accesses from system calls
+System Call Handler
+: 
+Implement 
+syscall_handler
+() to handle
+ 
+system call
+System Call Implementation
+:
+  Implement 
+exec(), exit(), write(), read() 
+first
+Additional Implementation
+: 
+Implement 
+fibonacci
+(), 
+max_of_four_int
+()
+78
+Refer to Pintos manual 3.2
+{0E3FDE45-AF77-4B5C-9715-49D594BDF05E}
+Refer to Code
+ 
+Level Flow
+src
+/
+userprog
+/
+process.c
+ : load()
+Check parameters of load()
+If you want to check the dump values before implementing 
+process_wait
+(),
+ 
+insert infinite loop in 
+process_wait
+() to block process
+(You should finish to implement 
+process_wait
+() later)
+
+--- ppt/slides/slide79.xml ---
+※ Refer to source codes in 
+src
+/tests/
+userprog
+Suggested Order of Implementation (1)
+You can not see the result until you implement core functionalities.
+Students are highly encouraged to read/understand these slides and Pintos manual first, design the structures and then start to implement.
+Argument Passing
+: 
+After implementing it, check the result using 
+hex_dump
+()
+User Memory Access: 
+Make a plan for protecting user memory accesses from system calls
+System Call Handler
+: 
+Implement 
+syscall_handler
+() to handle
+ 
+system call
+System Call Implementation
+:
+  Implement 
+exec(), exit(), write(), read() 
+first
+Additional Implementation
+: 
+Implement 
+fibonacci
+(), 
+max_of_four_int
+()
+{0E3FDE45-AF77-4B5C-9715-49D594BDF05E}
+Refer to 
+src
+/threads/
+vaddr.h
+Recommend to implement the function which checks the validity of given address
+79
+Refer to Pintos manual 3.2
+
+--- ppt/slides/slide80.xml ---
+※ Refer to source codes in 
+src
+/tests/
+userprog
+Suggested Order of Implementation (1)
+You can not see the result until you implement core functionalities.
+Students are highly encouraged to read/understand these slides and Pintos manual first, design the structures and then start to implement.
+Argument Passing
+: 
+After implementing it, check the result using 
+hex_dump
+()
+User Memory Access
+: 
+Make a plan for protecting user memory accesses from system calls
+System Call Handler: 
+Implement 
+syscall_handler
+() to handle
+ 
+system call
+System Call Implementation
+:
+  Implement 
+exec(), exit(), write(), read() 
+first
+Additional Implementation
+: 
+Implement 
+fibonacci
+(), 
+max_of_four_int
+()
+{0E3FDE45-AF77-4B5C-9715-49D594BDF05E}
+src
+/
+userprog
+/
+syscall.c
+ : 
+syscall_handler
+()
+Check argument 'struct 
+intr_frame
+' of 
+syscall_handler
+() in 
+syscall.c
+ 
+(struct 
+intr_frame
+ is in 
+src
+/threads/
+interrupt.h
+)
+80
+Refer to Pintos manual 3.2
+
+--- ppt/slides/slide81.xml ---
+※ Refer to source codes in 
+src
+/tests/
+userprog
+{0E3FDE45-AF77-4B5C-9715-49D594BDF05E}
+Synchronization will be needed
+(You can use busy waiting) 
+exit status is
+ 
+-1 when 
+syscall_handler
+ is terminated in abnormal way 
+Suggested Order of Implementation (1)
+You can not see the result until you implement core functionalities.
+Students are highly encouraged to read/understand these slides and Pintos manual first, design the structures and then start to implement.
+Argument Passing
+: 
+After implementing it, check the result using 
+hex_dump
+()
+User Memory Access
+: 
+Make a plan for protecting user memory accesses from system calls
+System Call Handler
+: 
+Implement 
+syscall_handler
+() to handle
+ 
+system call
+System Call Implementation:  
+Implement 
+exec(), exit(), write(), read() 
+first
+Additional Implementation
+: 
+Implement 
+fibonacci
+(), 
+max_of_four_int
+()
+81
+Refer to Pintos manual 3.2
+
+--- ppt/slides/slide82.xml ---
+※ Refer to source codes in 
+src
+/tests/
+userprog
+Suggested Order of Implementation (1)
+You can not see the result until you implement core functionalities.
+Students are highly encouraged to read/understand these slides and Pintos manual first, design the structures and then start to implement.
+Argument Passing
+: 
+After implementing it, check the result using 
+hex_dump
+()
+User Memory Access
+: 
+Make a plan for protecting user memory accesses from system calls
+System Call Handler
+: 
+Implement 
+syscall_handler
+() to handle
+ 
+system call
+System Call Implementation
+:
+  Implement 
+exec(), exit(), write(), read() 
+first
+Additional Implementation: 
+Implement 
+fibonacci
+(), 
+max_of_four_int
+()
+{0E3FDE45-AF77-4B5C-9715-49D594BDF05E}
+Modify the followings:
+src
+/lib/
+syscall-nr.h
+src
+/lib/
+syscall.h
+src
+/lib/
+syscall.c
+82
+Refer to Pintos manual 3.2
+
+--- ppt/slides/slide83.xml ---
+Suggested Order of Implementation (2)
+Implement system calls about file system
+System calls
+create, remove, open, close, 
+filesize
+, read, write, seek, tell
+See Pintos manual p.29~32 for system call implementation.
+83
+Prj1-2
+
+--- ppt/slides/slide84.xml ---
+Evaluation
+All 76 
+tests
+ 
+in
+ 
+this
+ 
+project
+ 
+will
+ 
+be
+ 
+graded
+.
+Prj1-1: 21 
+tests
+ / Prj1-2: 55 
+tests
+ 
+(
+Refer
+ 
+to
+ 
+the
+ 
+test
+ 
+case
+ 
+lists
+ 
+in
+ 
+the
+ 
+next
+ 
+slides
+) 
+(
+※ 
+Rows 
+Highlighted
+ 
+in yellow
+ 
+in
+ 
+the
+ 
+tables
+ 
+are
+ 
+the
+ 21 
+tests
+ 
+for
+ Prj1-1
+)
+Total score is 100 which consists of 80 for test cases and 20 for documentation.
+Additional 2.5 points for each additional system call implementation.
+(5 points for 
+fibonacci
+() 
+and 
+max
+_of_four_int
+()
+ in implementation
+)
+※ It will be calculated in development part (80%), so the total point will be 4 points (5*80%).
+Grading script (
+make grade 
+or 
+make check
+ in 
+src
+/
+userprog
+) provided by Pintos will be used.
+Refer to 
+'grade'
+ and 
+'results'
+ files in 
+src
+/
+userprog
+/build after grading
+('grade' file is only created when you use 
+make grade
+)
+84
+Refer to Pintos manual 1.2.1
+
+--- ppt/slides/slide85.xml ---
+Evaluation
+Test cases are classified 
+		i
+n 
+functionality
+ / 
+robustness
+ / 
+no-
+vm
+ / 
+base
+ 
+file
+ 
+system
+ (
+filesys
+ 
+base
+)
+Refer to the followings for checking each test case's point based on the test type
+pintos/
+src
+/tests/
+userprog
+/
+Rubric.functionality
+ 
+pintos/
+src
+/tests/
+userprog
+/
+Rubric.robustness
+pintos/
+src
+/tests/
+userprog
+/no-
+vm
+/Rubric
+pintos/
+src
+/tests/
+filesys
+/base/Rubric
+85
+Refer to Pintos manual 1.2.1
+
+--- ppt/slides/slide86.xml ---
+{5C22544A-7EE6-4342-B048-85BDC9FD1C3A}
+Functionality
+No.
+Name
+Point
+1
+args
+-none
+3
+2
+args
+-single
+3
+3
+args
+-multiple
+3
+4
+args
+-many
+3
+5
+args
+-
+dbl
+-space
+3
+6
+exec-once
+5
+7
+exec-multiple
+5
+8
+exec-
+arg
+5
+9
+wait-simple
+5
+10
+wait-twice
+5
+11
+multi-recurse
+15
+12
+exit
+5
+13
+halt
+3
+Evaluation
+86
+{5C22544A-7EE6-4342-B048-85BDC9FD1C3A}
+Functionality
+No.
+Name
+Point
+1
+4
+create-empty
+3
+15
+create-long
+3
+16
+create-normal
+3
+17
+create-exists
+3
+18
+open-missing
+3
+19
+open-normal
+3
+20
+open-twice
+3
+21
+read-normal
+3
+22
+read-zero
+3
+23
+write-normal
+3
+{5C22544A-7EE6-4342-B048-85BDC9FD1C3A}
+Functionality
+No.
+Name
+Point
+24
+write-zero
+3
+25
+close-normal
+3
+26
+rox
+-simple
+3
+27
+rox
+-child
+3
+28
+rox-multichild
+3
+Total Score
+108
+
+--- ppt/slides/slide87.xml ---
+{5C22544A-7EE6-4342-B048-85BDC9FD1C3A}
+Robustness
+No.
+Name
+Point
+1
+exec-bad-
+ptr
+3
+2
+exec-missing
+5
+3
+sc
+-bad-
+arg
+3
+4
+sc
+-bad-
+sp
+3
+5
+sc
+-boundary
+5
+6
+sc-boundary-2
+5
+7
+wait-bad-
+pid
+5
+8
+wait-killed
+5
+Evaluation
+87
+{5C22544A-7EE6-4342-B048-85BDC9FD1C3A}
+Robustness
+No.
+Name
+Point
+9
+close-
+stdin
+2
+10
+close-
+stdout
+2
+11
+close-bad-
+fd
+2
+12
+close-twice
+2
+13
+read-bad-
+fd
+2
+14
+read-
+stdout
+2
+15
+write-bad-
+fd
+2
+16
+write-
+stdin
+2
+17
+multi-child-
+fd
+2
+18
+create-bad-
+ptr
+3
+{5C22544A-7EE6-4342-B048-85BDC9FD1C3A}
+Robustness
+No.
+Name
+Point
+19
+open-empty
+2
+20
+open-bad-
+ptr
+3
+21
+read-bad-
+ptr
+3
+22
+write-bad-
+ptr
+3
+23
+create-bound
+3
+24
+open-boundary
+3
+25
+read-boundary
+3
+26
+write-boundary
+3
+27
+create-null
+2
+28
+open-null
+2
+{5C22544A-7EE6-4342-B048-85BDC9FD1C3A}
+Robustness
+No.
+Name
+Point
+29
+bad-read
+1
+30
+bad-read2
+1
+31
+bad-write
+1
+32
+bad-write2
+1
+33
+bad-jump
+1
+34
+bad-jump2
+1
+Total Score
+88
+
+--- ppt/slides/slide88.xml ---
+Evaluation
+88
+{5C22544A-7EE6-4342-B048-85BDC9FD1C3A}
+No-
+vm
+No.
+Name
+Point
+1
+multi-
+oom
+1
+Total Score
+1
+User Program
+Filesys
+{5C22544A-7EE6-4342-B048-85BDC9FD1C3A}
+Base
+No.
+Name
+Point
+1
+sm
+-create
+1
+2
+sm
+-full
+2
+3
+sm
+-random
+2
+4
+sm
+-
+seq
+-block
+2
+5
+sm
+-
+seq
+-random
+3
+6
+lg
+-create
+1
+7
+lg
+-full
+2
+8
+lg
+-random
+2
+9
+lg
+-
+seq
+-block
+2
+10
+lg
+-
+seq
+-random
+3
+{5C22544A-7EE6-4342-B048-85BDC9FD1C3A}
+Base
+No.
+Name
+Point
+11
+syn
+-read
+4
+12
+syn
+-write
+4
+13
+syn
+-remove
+2
+Total Score
+30
+# of Total Tests
+76
+
+--- ppt/slides/slide89.xml ---
+Evaluation
+Total development score
+ 
+:
+Functionality
+𝟏𝟎𝟖
+ 
+×
+𝟑𝟓
++
+Robustness
+𝟖𝟖
+×
+𝟐𝟓
++
+no−vm
+𝟏
+×
+𝟏𝟎
++
+filesys(base)
+𝟑𝟎
+×
+𝟑𝟎
+/
+𝟏𝟎𝟎
+×
+𝟖𝟎
+Documentation
+Use the document file uploaded on e-class.
+Documentation accounts for 20% of total score.
+(Development 80%, Documentation 20%)
+ 
+89
+
+--- ppt/slides/slide90.xml ---
+Documentation
+Use the document file uploaded on e-class
+Documentation accounts for
+ 
+20% of total score.
+(Development 80%, Documentation 20%)
+90
+
+--- ppt/slides/slide91.xml ---
+Submission
+We provide the script 'submit.sh' to make tar.gz file which contains '
+src
+' directory and document file.
+학생들의 편의를 위해 
+pintos 
+디렉토리 내 
+submit.sh
+ 스크립트를 제공합니다
+.
+이 스크립트는
+ 
+src
+ 디렉토리와 
+document file
+을 포함한 
+tar.gz
+ 파일을 생성합니다
+.
+91
+
+--- ppt/slides/slide92.xml ---
+Submission
+It is a 
+individual project
+.
+Due date :
+ 
+2026. 10. 4. 23:59
+Submission
+The form of submission file is as follows:
+No hardcopy.
+Copy will get a penalty (1
+st
+ time: 0 Point and downgrading, 2
+nd
+ time: F grade)
+{5C22544A-7EE6-4342-B048-85BDC9FD1C3A}
+Name of compressed file
+Example (ID: 2018
+9999
+)
+os_prj1_[ID].
+tar.gz
+os_prj1_2018
+9999
+.tar.gz
+92
+
+--- ppt/slides/slide93.xml ---
+Submission
+Contents
+Pintos source codes (Only 
+'
+src
+' directory 
+in pintos directory)
+최소한의 용량을 위해 
+src
+ 디렉토리만 
+압축파일에
+ 포함합니다
+.
+Document
+:
+ 
+[
+ID].docx
+ 
+(e.g. 20189999.docx; Other format is not allowed such as .
+hwp
+)
+How to submit
+Make 
+tar.gz
+ file.
+Copy the document file ([ID].docx) to pintos directory.
+Execute 
+submit.sh
+ script in the pintos directory and follow the instructions of the script
+.
+pintos
+ 디렉토리 내의 
+submit.sh
+ 스크립트를 실행하고 스크립트의 지시를 따르십시오
+.
+Check that 
+os_prj1_[ID].
+tar.gz
+ is created.
+Decompress 
+os_prj1_[ID].
+tar.gz
+ 
+and check the contents in it. ($ 
+tar -
+zxf
+ os_prj1_[ID].
+tar.gz
+)
+(Only 
+[ID].docx
+ and 
+src
+ directory should be contained in the 
+tar.gz
+ file.)
+For example, if your ID is 20189999, os_prj1_20189999.tar.gz should be created.
+To decompress the 
+tar.gz
+ file, execute 
+tar -
+zxf
+ os_prj1_20189999.tar.gz
+Please check the contents of 
+tar.gz
+ file after creating it.
+Upload the 
+os_prj1_[ID].
+tar.gz
+ file to e-class.
+5% of point will be deducted for a wrong form and way to submit.
+Late submission is allowed up to 3 days (~10/7, 23:59) and 10% of point will be deducted per day.
+93
+
+--- ppt/slides/slide94.xml ---
+Submission
+Notice – ‘
+submit.sh
+’
+The ‘
+submit.sh
+’ script should be executed on a directory where ‘
+src
+’ folder is located.
+   
+submit.sh
+ 
+스크립트는 
+src
+ 
+폴더가 위치한 디렉토리에서 실행되어야 합니다
+.
+‘ID’ folder should not be in the directory. ('ID' folder will be removed after compressing process.)
+   
+해당 디렉토리에 
+‘
+학번
+’ 
+폴더가 없어야 합니다
+. (
+압축 과정 중 
+'
+학번
+' 
+폴더를 생성하여 필요한 파일을 넣고 압축한 뒤 
+'
+학번
+' 
+폴더를 삭제합니다
+.)
+‘
+ID.docx
+’ file should be located in the directory.
+   Also, report file with extensions other than ‘docx’ will not be compressed.
+   
+해당 디렉토리에 
+‘
+학번
+.docx’ 
+파일이 있어야 함께 압축됩니다
+.
+   
+또한 
+‘docx’ 
+이외의 
+확장자를
+ 가진 보고서 파일은 압축되지 않습니다
+.
+Be sure to backup your code in case of an unexpected situation.
+   
+만일의 경우를 대비해 반드시 코드를 백업하여 주세요
+. 
+94
+
+--- ppt/slides/slide95.xml ---
+Submission
+Disclaimer
+You must check the contents of the 
+tar.gz
+ file before submission.
+제출하기 전
+,
+ 
+tar.gz
+ 파일의 내용물을 반드시 다시 한 번 체크하기 바랍니다
+.
+Any result produced from the '
+submit.sh
+' script is 
+at your own risk.
+'
+submit.sh
+'
+ 스크립트로 생성된 결과의 
+모든 책임은 사용자에게 귀속됩니다
+.
+95
