@@ -463,6 +463,14 @@ init_thread (struct thread *t, const char *name, int priority)
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
   t->magic = THREAD_MAGIC;
+#ifdef USERPROG
+  t->exit_status = 0;
+  // 여기를 수정해야함
+  t->next_fd = 2; // 0(STDIN), 1(STDOUT) 예약되어 있으므로 2번부터 할당
+  int i;
+  for (i = 0; i < 128; i++)
+    t->fd_table[i] = NULL;
+#endif
 
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);

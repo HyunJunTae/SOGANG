@@ -105,6 +105,18 @@ process_exit (void)
   struct thread *cur = thread_current ();
   uint32_t *pd;
 
+  // 여기를 수정해야함
+  // 프로세스가 열어둔 모든 파일 디스크립터의 파일을 닫아 자원 회수
+  int i;
+  for (i = 2; i < 128; i++)
+    {
+      if (cur->fd_table[i] != NULL)
+        {
+          file_close (cur->fd_table[i]);
+          cur->fd_table[i] = NULL;
+        }
+    }
+
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
   pd = cur->pagedir;
@@ -337,7 +349,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
   argument_stack (argv, argc, esp);
 
   // 디버깅용: 스택 메모리 덤프 출력 (과제 완료 후 주석 처리 가능)
-  // hex_dump ((uintptr_t) *esp, *esp, PHYS_BASE - *esp, true);
+  hex_dump ((uintptr_t) *esp, *esp, PHYS_BASE - *esp, true);
 
 
 
@@ -370,7 +382,7 @@ argument_stack (char **argv, int argc, void **esp)
       argv_addr[i] = (uint32_t) *esp;   // 스택에 저장된 해당 인자의 시작 주소 기억 (나중에 이거도 푸시해야함)
     }
 
-  // 2. Word-alignment
+  // 2. 워드 정렬 (4바이트 단위 정렬)
   int align = (uintptr_t) *esp % 4;
   if (align != 0)
     {
@@ -398,7 +410,7 @@ argument_stack (char **argv, int argc, void **esp)
   *esp -= 4;
   *(int *) *esp = argc;
 
-  // 7. Fake return address (가짜 반환 주소: 0) 푸시
+  // 7. 가짜 반환 주소 (Fake return address: 0) 푸시
   *esp -= 4;
   *(uint32_t *) *esp = 0;
 }

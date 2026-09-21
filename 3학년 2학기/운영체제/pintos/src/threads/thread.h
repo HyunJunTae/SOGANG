@@ -80,6 +80,10 @@ typedef int tid_t;
    only because they are mutually exclusive: only a thread in the
    ready state is on the run queue, whereas only a thread in the
    blocked state is on a semaphore wait list. */
+
+// 여기를 수정해야함
+struct file;
+
 struct thread
   {
     /* Owned by thread.c. */
@@ -97,6 +101,9 @@ struct thread
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
     int exit_status;                    // 프로세스의 종료 상태 코드
+    // 여기를 수정해야함
+    struct file *fd_table[128];         // 파일 디스크립터 테이블 (최대 128개 파일)
+    int next_fd;                        // 다음에 할당할 FD 번호 (초기값: 2)
 #endif
 
     /* Owned by thread.c. */
