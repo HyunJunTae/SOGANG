@@ -105,7 +105,7 @@ process_exit (void)
   struct thread *cur = thread_current ();
   uint32_t *pd;
 
-  // 여기를 수정해야함
+  // 3. 여기를 수정해야함
   // 프로세스가 열어둔 모든 파일 디스크립터의 파일을 닫아 자원 회수
   int i;
   for (i = 2; i < 128; i++)
