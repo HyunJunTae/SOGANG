@@ -182,6 +182,12 @@ thread_create (const char *name, int priority,
   /* Initialize thread. */
   init_thread (t, name, priority);
   tid = t->tid = allocate_tid ();
+  
+  // 시스템콜 여기 구현 - 새로 생성된 스레드(자식)에게 부모 스레드를 지정 (최초 스레드 제외)
+#ifdef USERPROG
+  if (t != initial_thread)
+    t->parent = thread_current ();
+#endif
 
   /* Stack frame for kernel_thread(). */
   kf = alloc_frame (t, sizeof *kf);
@@ -470,6 +476,11 @@ init_thread (struct thread *t, const char *name, int priority)
   int i;
   for (i = 0; i < 128; i++)
     t->fd_table[i] = NULL;
+    
+  // 시스템콜 여기 구현 - 자식 리스트 및 exec 대기용 세마포어 초기화
+  list_init (&t->child_list);
+  sema_init (&t->load_sema, 0);
+  t->load_success = false;
 #endif
 
   old_level = intr_disable ();

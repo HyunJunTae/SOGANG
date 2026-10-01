@@ -17,6 +17,8 @@
 #include "threads/palloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "threads/malloc.h"
+#include "userprog/syscall.h"
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
@@ -47,8 +49,27 @@ process_execute (const char *file_name)
 
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (real_name, PRI_DEFAULT, start_process, fn_copy);
-  if (tid == TID_ERROR)
+  if (tid == TID_ERROR) {
     palloc_free_page (fn_copy); 
+    return TID_ERROR;
+  }
+
+  // 시스템콜 여기 구현 - 자식 상태 객체 생성 및 리스트 삽입, 자식 로딩 완료 대기
+  struct child_status *child = malloc (sizeof (struct child_status));
+  if (child == NULL)
+    return TID_ERROR;
+    
+  child->tid = tid;
+  child->exit_status = -1;
+  child->is_exit = false;
+  child->is_waiting = false;
+  sema_init (&child->wait_sema, 0);
+  list_push_back (&thread_current ()->child_list, &child->elem);
+
+  sema_down (&thread_current ()->load_sema);
+  if (!thread_current ()->load_success)
+    return TID_ERROR;
+
   return tid;
 }
 
@@ -67,6 +88,10 @@ start_process (void *file_name_)
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
   success = load (file_name, &if_.eip, &if_.esp);
+
+  // 시스템콜 여기 구현 - 자식 로드 완료 상태를 부모에게 기록하고, 대기 중인 부모를 깨움
+  thread_current ()->parent->load_success = success;
+  sema_up (&thread_current ()->parent->load_sema);
 
   /* If load failed, quit. */
   palloc_free_page (file_name);
@@ -93,9 +118,39 @@ start_process (void *file_name_)
    This function will be implemented in problem 2-2.  For now, it
    does nothing. */
 int
-process_wait (tid_t child_tid UNUSED) 
+process_wait (tid_t child_tid) 
 {
-  return -1;
+  // 시스템콜 여기 구현 - 자식 리스트를 탐색하여 해당 자식이 종료될 때까지 대기 후 상태 회수
+  struct list *child_list = &thread_current ()->child_list;
+  struct list_elem *e;
+  struct child_status *child = NULL;
+  int status = -1;
+
+  for (e = list_begin (child_list); e != list_end (child_list); e = list_next (e))
+    {
+      struct child_status *c = list_entry (e, struct child_status, elem);
+      if (c->tid == child_tid)
+        {
+          child = c;
+          break;
+        }
+    }
+
+  if (child == NULL)
+    return -1;
+  if (child->is_waiting)
+    return -1;
+
+  child->is_waiting = true;
+
+  if (!child->is_exit)
+    sema_down (&child->wait_sema);
+
+  status = child->exit_status;
+  list_remove (&child->elem);
+  free (child);
+
+  return status;
 }
 
 /* Free the current process's resources. */
@@ -104,9 +159,36 @@ process_exit (void)
 {
   struct thread *cur = thread_current ();
   uint32_t *pd;
+  
+  // 시스템콜 여기 구현 - 부모의 자식 리스트에 내 종료 상태를 업데이트하고, 남은 자식들 메모리 해제
+  struct list_elem *e;
+  if (cur->parent != NULL) 
+    {
+      for (e = list_begin (&cur->parent->child_list); e != list_end (&cur->parent->child_list); e = list_next (e))
+        {
+          struct child_status *child = list_entry (e, struct child_status, elem);
+          if (child->tid == cur->tid)
+            {
+              child->is_exit = true;
+              child->exit_status = cur->exit_status;
+              sema_up (&child->wait_sema);
+              break;
+            }
+        }
+    }
+    
+  // 자식 프로세스 리스트 메모리 해제
+  while (!list_empty (&cur->child_list))
+    {
+      struct list_elem *e = list_pop_front (&cur->child_list);
+      struct child_status *child = list_entry (e, struct child_status, elem);
+      free (child);
+    }
 
   // 3. 여기를 수정해야함
   // 프로세스가 열어둔 모든 파일 디스크립터의 파일을 닫아 자원 회수
+  lock_acquire (&filesys_lock);
+  
   int i;
   for (i = 2; i < 128; i++)
     {
@@ -116,6 +198,14 @@ process_exit (void)
           cur->fd_table[i] = NULL;
         }
     }
+
+  // synchronization 여기 구현 - 실행 중이던 파일 닫아주기 (쓰기 권한 반환)
+  if (cur->run_file != NULL)
+    {
+      file_close (cur->run_file);
+    }
+    
+  lock_release (&filesys_lock);
 
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
@@ -349,7 +439,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
   argument_stack (argv, argc, esp);
 
   // 디버깅용: 스택 메모리 덤프 출력 (과제 완료 후 주석 처리 가능)
-  hex_dump ((uintptr_t) *esp, *esp, PHYS_BASE - *esp, true);
+  // hex_dump ((uintptr_t) *esp, *esp, PHYS_BASE - *esp, true);
 
 
 
@@ -360,7 +450,16 @@ load (const char *file_name, void (**eip) (void), void **esp)
 
  done:
   /* We arrive here whether the load is successful or not. */
-  file_close (file);
+  if (success) 
+    {
+      // synchronization 여기 구현 - 성공적으로 로드된 경우 파일을 닫지 않고 쓰기 방지 설정
+      thread_current ()->run_file = file;
+      file_deny_write (file);
+    }
+  else 
+    {
+      file_close (file);
+    }
   return success;
 }
 

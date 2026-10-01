@@ -4,6 +4,7 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
+#include "threads/synch.h"
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -84,6 +85,16 @@ typedef int tid_t;
 // 3. 여기를 수정해야함
 struct file;
 
+// 시스템콜 여기 구현 - 자식 프로세스의 종료 상태를 추적하기 위한 구조체
+struct child_status {
+    tid_t tid;
+    int exit_status;
+    bool is_exit;
+    bool is_waiting;
+    struct semaphore wait_sema;
+    struct list_elem elem;
+};
+
 struct thread
   {
     /* Owned by thread.c. */
@@ -104,6 +115,15 @@ struct thread
     // 3. 여기를 수정해야함
     struct file *fd_table[128];         // 파일 디스크립터 테이블 (최대 128개 파일)
     int next_fd;                        // 다음에 할당할 FD 번호 (초기값: 2)
+    
+    // 시스템콜 여기 구현 - 부모/자식 관계 및 exec 동기화를 위한 변수들
+    struct thread *parent;              // 부모 프로세스 포인터
+    struct list child_list;             // 자식 프로세스 리스트
+    struct semaphore load_sema;         // 자식 로딩 대기용 세마포어
+    bool load_success;                  // 자식 메모리 로딩 성공 여부
+    
+    // synchronization 여기 구현 - 현재 실행 중인 파일 객체 (쓰기 방지용)
+    struct file *run_file;              // 현재 실행 중인 파일 객체
 #endif
 
     /* Owned by thread.c. */

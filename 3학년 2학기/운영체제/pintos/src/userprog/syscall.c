@@ -14,6 +14,9 @@
 static void syscall_handler (struct intr_frame *);
 void halt (void);
 
+// synchronization 여기 구현 - 전역 락 실제 선언 (메모리 할당)
+struct lock filesys_lock;
+
 // 주소가 유효하지 않으면 즉시 프로세스를 안전하게 종료(-1)
 void
 is_valid_address (const void *addr) 
@@ -45,6 +48,34 @@ halt (void)
 }
 
 // 여기를 수정해야함
+// synchronization 여기 구현 - 파일 생성
+bool
+create (const char *file, unsigned initial_size)
+{
+  is_valid_address (file);
+
+  // synchronization 여기 구현 - 임계 구역 락 획득
+  lock_acquire (&filesys_lock);
+  bool success = filesys_create (file, initial_size);
+  lock_release (&filesys_lock);
+
+  return success;
+}
+
+// synchronization 여기 구현 - 파일 삭제
+bool
+remove (const char *file)
+{
+  is_valid_address (file);
+
+  // synchronization 여기 구현 - 임계 구역 락 획득
+  lock_acquire (&filesys_lock);
+  bool success = filesys_remove (file);
+  lock_release (&filesys_lock);
+
+  return success;
+}
+
 // 파일을 열고 고유한 File Descriptor(fd) 번호를 반환하는 시스템 콜
 int
 open (const char *file)
@@ -53,7 +84,11 @@ open (const char *file)
   if (*file == '\0')
     return -1; // 빈 파일 이름은 에러 처리
 
+  // synchronization 여기 구현 - 임계 구역 락 획득
+  lock_acquire (&filesys_lock);
   struct file *f = filesys_open (file);
+  lock_release (&filesys_lock);
+  
   if (f == NULL)
     return -1; // 파일이 없거나 오픈 실패
 
@@ -109,7 +144,11 @@ close (int fd)
   if (cur->fd_table[fd] == NULL)
     return; // 이미 닫혔거나 열리지 않은 fd
 
+  // synchronization 여기 구현 - 임계 구역 락 획득
+  lock_acquire (&filesys_lock);
   file_close (cur->fd_table[fd]);
+  lock_release (&filesys_lock);
+  
   cur->fd_table[fd] = NULL;
 }
 
@@ -147,7 +186,12 @@ read (int fd, void *buffer, unsigned size)
   if (cur->fd_table[fd] == NULL)
     return -1;
 
-  return file_read (cur->fd_table[fd], buffer, size);
+  // synchronization 여기 구현 - 임계 구역 락 획득
+  lock_acquire (&filesys_lock);
+  int bytes_read = file_read (cur->fd_table[fd], buffer, size);
+  lock_release (&filesys_lock);
+  
+  return bytes_read;
 }
 
 // 파일 또는 화면에 데이터를 쓰는 시스템 콜
@@ -179,7 +223,12 @@ write (int fd, const void *buffer, unsigned size)
   if (cur->fd_table[fd] == NULL)
     return -1;
 
-  return file_write (cur->fd_table[fd], buffer, size);
+  // synchronization 여기 구현 - 임계 구역 락 획득
+  lock_acquire (&filesys_lock);
+  int bytes_written = file_write (cur->fd_table[fd], buffer, size);
+  lock_release (&filesys_lock);
+  
+  return bytes_written;
 }
 
 // 파일의 크기(바이트 수)를 반환하는 시스템 콜
@@ -193,7 +242,12 @@ filesize (int fd)
   if (cur->fd_table[fd] == NULL)
     return -1;
 
-  return file_length (cur->fd_table[fd]);
+  // synchronization 여기 구현 - 임계 구역 락 획득
+  lock_acquire (&filesys_lock);
+  int len = file_length (cur->fd_table[fd]);
+  lock_release (&filesys_lock);
+
+  return len;
 }
 
 // 파일의 읽기/쓰기 위치(offset)를 변경하는 시스템 콜
@@ -207,7 +261,10 @@ seek (int fd, unsigned position)
   if (cur->fd_table[fd] == NULL)
     return;
 
+  // synchronization 여기 구현 - 임계 구역 락 획득
+  lock_acquire (&filesys_lock);
   file_seek (cur->fd_table[fd], position);
+  lock_release (&filesys_lock);
 }
 
 // 파일의 현재 읽기/쓰기 위치(offset)를 반환하는 시스템 콜
@@ -221,14 +278,61 @@ tell (int fd)
   if (cur->fd_table[fd] == NULL)
     return 0;
 
-  return file_tell (cur->fd_table[fd]);
+  // synchronization 여기 구현 - 임계 구역 락 획득
+  lock_acquire (&filesys_lock);
+  unsigned pos = file_tell (cur->fd_table[fd]);
+  lock_release (&filesys_lock);
+  
+  return pos;
 }
 
 
 // pintos가 맨 처음에 컴퓨터를 켜면, 이 함수를 실행 -> 0x30번 인터럽트가 발생되면, syscall_handler()를 호출하도록 설정
+// 시스템콜 여기 구현 - exec, wait, 서강대 추가 시스템 콜 커널 내부 로직 함수
+tid_t
+exec (const char *cmd_line)
+{
+  is_valid_address (cmd_line);
+  return process_execute (cmd_line);
+}
+
+int
+wait (tid_t pid)
+{
+  return process_wait (pid);
+}
+
+int
+fibonacci (int n)
+{
+  if (n < 0) return -1;
+  if (n == 0) return 0;
+  if (n == 1 || n == 2) return 1;
+  
+  int a = 1, b = 1, c = 2;
+  int i;
+  for (i = 3; i <= n; i++)
+    {
+      c = a + b;
+      a = b;
+      b = c;
+    }
+  return c;
+}
+
+int
+max_of_four_int (int a, int b, int c, int d)
+{
+  int max1 = a > b ? a : b;
+  int max2 = c > d ? c : d;
+  return max1 > max2 ? max1 : max2;
+}
+
 void
 syscall_init (void) 
 {
+  // synchronization 여기 구현 - 파일 시스템 접근 동기화를 위한 전역 락 초기화
+  lock_init (&filesys_lock);
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
 }
 
@@ -256,7 +360,46 @@ syscall_handler (struct intr_frame *f)
       exit (*((int *) f->esp + 1));
       break;
 
+    // 시스템콜 여기 구현 - exec, wait, 서강대 추가 시스템 콜 인터럽트 분기 및 유효성 검증
+    case SYS_EXEC:
+      is_valid_address ((int *) f->esp + 1);
+      f->eax = exec (*((char **) f->esp + 1));
+      break;
+
+    case SYS_WAIT:
+      is_valid_address ((int *) f->esp + 1);
+      f->eax = wait (*((tid_t *) f->esp + 1));
+      break;
+
+    case SYS_FIBONACCI:
+      is_valid_address ((int *) f->esp + 1);
+      f->eax = fibonacci (*((int *) f->esp + 1));
+      break;
+
+    case SYS_MAX_OF_FOUR_INT:
+      is_valid_address ((int *) f->esp + 1);
+      is_valid_address ((int *) f->esp + 2);
+      is_valid_address ((int *) f->esp + 3);
+      is_valid_address ((int *) f->esp + 4);
+      f->eax = max_of_four_int (*((int *) f->esp + 1),
+                                *((int *) f->esp + 2),
+                                *((int *) f->esp + 3),
+                                *((int *) f->esp + 4));
+      break;
+
     // 여기를 수정해야함
+    // synchronization 여기 구현 - 핸들러 분기
+    case SYS_CREATE:
+      is_valid_address ((int *) f->esp + 1);
+      is_valid_address ((int *) f->esp + 2);
+      f->eax = create (*((char **) f->esp + 1), *((unsigned *) f->esp + 2));
+      break;
+
+    case SYS_REMOVE:
+      is_valid_address ((int *) f->esp + 1);
+      f->eax = remove (*((char **) f->esp + 1));
+      break;
+
     case SYS_OPEN:
       is_valid_address ((int *) f->esp + 1);
       f->eax = open (*((char **) f->esp + 1));

@@ -18,6 +18,10 @@ enum
     SYS_SEEK,                   /* Change position in a file. */
     SYS_TELL,                   /* Report current position in a file. */
     SYS_CLOSE,                  /* Close a file. */
+    
+    // 시스템콜 여기 구현 - 서강대 추가 시스템 콜 번호 부여
+    SYS_FIBONACCI,              /* Sogang custom syscall: Fibonacci. */
+    SYS_MAX_OF_FOUR_INT,        /* Sogang custom syscall: Max of four int. */
 
     /* Project 3 and optionally project 4. */
     SYS_MMAP,                   /* Map a file into memory. */
