@@ -324,6 +324,9 @@ load (const char *file_name, void (**eip) (void), void **esp)
   bool success = false;
   int i;
 
+  // [Issue 2 해결] 실행 파일 로드 시 발생하는 파일 시스템 동시성 문제 방지를 위해 락 획득
+  lock_acquire (&filesys_lock);
+
   /* Allocate and activate page directory. */
   t->pagedir = pagedir_create (); // 이 부분은 문제 없음. thread.h 확인해보면 ifdef으로 정의되어 있음.
   if (t->pagedir == NULL) 
@@ -460,6 +463,9 @@ load (const char *file_name, void (**eip) (void), void **esp)
     {
       file_close (file);
     }
+    
+  // [Issue 2 해결] 파일 시스템 동기화 락 해제
+  lock_release (&filesys_lock);
   return success;
 }
 

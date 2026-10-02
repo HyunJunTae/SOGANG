@@ -30,6 +30,40 @@ is_valid_address (const void *addr)
     }
 }
 
+// [Issue 3 해결] 버퍼가 여러 페이지에 걸쳐 있을 경우를 대비해 페이지 단위로 메모리 유효성 검사 (최적화)
+void
+check_valid_buffer (void *buffer, unsigned size)
+{
+  if (size == 0) return;
+  
+  char *ptr = (char *) buffer;
+  is_valid_address (ptr); // 시작 주소 검사
+  
+  // 버퍼가 걸쳐있는 페이지들을 순회하며 각 페이지의 시작점만 검사
+  void *curr_page = pg_round_down (ptr);
+  void *end_page = pg_round_down (ptr + size - 1);
+  
+  for (curr_page += PGSIZE; curr_page <= end_page; curr_page += PGSIZE)
+    {
+      is_valid_address (curr_page);
+    }
+}
+
+// [Issue 4 해결] 문자열 포인터가 페이지 경계를 넘을 경우를 대비해 널 문자(\0)까지 전체 검사 (최적화)
+void
+check_valid_string (const void *str)
+{
+  is_valid_address (str); // 첫 글자 주소 검사
+  char *ptr = (char *) str;
+  while (*ptr != '\0')
+    {
+      ptr++;
+      // 포인터가 페이지의 시작점(오프셋 0)에 도달했을 때만 새로운 페이지 유효성 검사
+      if (pg_ofs (ptr) == 0)
+        is_valid_address (ptr);
+    }
+}
+
 // 프로세스를 종료시키는 시스템 콜 함수
 void
 exit (int status)
@@ -52,7 +86,7 @@ halt (void)
 bool
 create (const char *file, unsigned initial_size)
 {
-  is_valid_address (file);
+  check_valid_string (file); // [Issue 4 해결] 문자열 전체 검증으로 변경
 
   // synchronization 여기 구현 - 임계 구역 락 획득
   lock_acquire (&filesys_lock);
@@ -66,7 +100,7 @@ create (const char *file, unsigned initial_size)
 bool
 remove (const char *file)
 {
-  is_valid_address (file);
+  check_valid_string (file); // [Issue 4 해결] 문자열 전체 검증으로 변경
 
   // synchronization 여기 구현 - 임계 구역 락 획득
   lock_acquire (&filesys_lock);
@@ -80,7 +114,7 @@ remove (const char *file)
 int
 open (const char *file)
 {
-  is_valid_address (file);
+  check_valid_string (file); // [Issue 4 해결] 문자열 전체 검증으로 변경
   if (*file == '\0')
     return -1; // 빈 파일 이름은 에러 처리
 
@@ -156,9 +190,7 @@ close (int fd)
 int
 read (int fd, void *buffer, unsigned size)
 {
-  is_valid_address (buffer);
-  if (size > 0)
-    is_valid_address ((const char *) buffer + size - 1);
+  check_valid_buffer (buffer, size); // [Issue 3 해결] 버퍼 전체 페이지 검증으로 변경
 
   if (size == 0)
     return 0; // 읽을 크기가 0이면 0 반환
@@ -198,9 +230,7 @@ read (int fd, void *buffer, unsigned size)
 int
 write (int fd, const void *buffer, unsigned size)
 {
-  is_valid_address (buffer);
-  if (size > 0)
-    is_valid_address ((const char *) buffer + size - 1);
+  check_valid_buffer ((void *) buffer, size); // [Issue 3 해결] 버퍼 전체 페이지 검증으로 변경
 
   if (size == 0)
     return 0; // 쓸 크기가 0이면 0 반환
@@ -292,7 +322,7 @@ tell (int fd)
 tid_t
 exec (const char *cmd_line)
 {
-  is_valid_address (cmd_line);
+  check_valid_string (cmd_line); // [Issue 4 해결] 문자열 전체 검증으로 변경
   return process_execute (cmd_line);
 }
 
@@ -342,7 +372,7 @@ static void
 syscall_handler (struct intr_frame *f) 
 {
   // 1. 유저 스택 포인터(f->esp) 자체의 유효성 검사
-  is_valid_address (f->esp);
+  check_valid_buffer (f->esp, 4);
 
   // 2. 시스템 콜 번호 읽어오기
   int syscall_nr = *(int *) f->esp;
@@ -356,31 +386,31 @@ syscall_handler (struct intr_frame *f)
 
     case SYS_EXIT:
       // exit 인자(status)가 위치한 스택 주소 유효성 검사 (esp + 4바이트)
-      is_valid_address ((int *) f->esp + 1);
+      check_valid_buffer ((int *) f->esp + 1, 4);
       exit (*((int *) f->esp + 1));
       break;
 
     // 시스템콜 여기 구현 - exec, wait, 서강대 추가 시스템 콜 인터럽트 분기 및 유효성 검증
     case SYS_EXEC:
-      is_valid_address ((int *) f->esp + 1);
+      check_valid_buffer ((int *) f->esp + 1, 4);
       f->eax = exec (*((char **) f->esp + 1));
       break;
 
     case SYS_WAIT:
-      is_valid_address ((int *) f->esp + 1);
+      check_valid_buffer ((int *) f->esp + 1, 4);
       f->eax = wait (*((tid_t *) f->esp + 1));
       break;
 
     case SYS_FIBONACCI:
-      is_valid_address ((int *) f->esp + 1);
+      check_valid_buffer ((int *) f->esp + 1, 4);
       f->eax = fibonacci (*((int *) f->esp + 1));
       break;
 
     case SYS_MAX_OF_FOUR_INT:
-      is_valid_address ((int *) f->esp + 1);
-      is_valid_address ((int *) f->esp + 2);
-      is_valid_address ((int *) f->esp + 3);
-      is_valid_address ((int *) f->esp + 4);
+      check_valid_buffer ((int *) f->esp + 1, 4);
+      check_valid_buffer ((int *) f->esp + 2, 4);
+      check_valid_buffer ((int *) f->esp + 3, 4);
+      check_valid_buffer ((int *) f->esp + 4, 4);
       f->eax = max_of_four_int (*((int *) f->esp + 1),
                                 *((int *) f->esp + 2),
                                 *((int *) f->esp + 3),
@@ -390,57 +420,57 @@ syscall_handler (struct intr_frame *f)
     // 여기를 수정해야함
     // synchronization 여기 구현 - 핸들러 분기
     case SYS_CREATE:
-      is_valid_address ((int *) f->esp + 1);
-      is_valid_address ((int *) f->esp + 2);
+      check_valid_buffer ((int *) f->esp + 1, 4);
+      check_valid_buffer ((int *) f->esp + 2, 4);
       f->eax = create (*((char **) f->esp + 1), *((unsigned *) f->esp + 2));
       break;
 
     case SYS_REMOVE:
-      is_valid_address ((int *) f->esp + 1);
+      check_valid_buffer ((int *) f->esp + 1, 4);
       f->eax = remove (*((char **) f->esp + 1));
       break;
 
     case SYS_OPEN:
-      is_valid_address ((int *) f->esp + 1);
+      check_valid_buffer ((int *) f->esp + 1, 4);
       f->eax = open (*((char **) f->esp + 1));
       break;
 
     case SYS_CLOSE:
-      is_valid_address ((int *) f->esp + 1);
+      check_valid_buffer ((int *) f->esp + 1, 4);
       close (*((int *) f->esp + 1));
       break;
 
     case SYS_READ:
-      is_valid_address ((int *) f->esp + 1);
-      is_valid_address ((int *) f->esp + 2);
-      is_valid_address ((int *) f->esp + 3);
+      check_valid_buffer ((int *) f->esp + 1, 4);
+      check_valid_buffer ((int *) f->esp + 2, 4);
+      check_valid_buffer ((int *) f->esp + 3, 4);
       f->eax = read (*((int *) f->esp + 1), 
                      *((void **) f->esp + 2), 
                      *((unsigned *) f->esp + 3));
       break;
 
     case SYS_WRITE:
-      is_valid_address ((int *) f->esp + 1);
-      is_valid_address ((int *) f->esp + 2);
-      is_valid_address ((int *) f->esp + 3);
+      check_valid_buffer ((int *) f->esp + 1, 4);
+      check_valid_buffer ((int *) f->esp + 2, 4);
+      check_valid_buffer ((int *) f->esp + 3, 4);
       f->eax = write (*((int *) f->esp + 1), 
                       *((void **) f->esp + 2), 
                       *((unsigned *) f->esp + 3));
       break;
 
     case SYS_FILESIZE:
-      is_valid_address ((int *) f->esp + 1);
+      check_valid_buffer ((int *) f->esp + 1, 4);
       f->eax = filesize (*((int *) f->esp + 1));
       break;
 
     case SYS_SEEK:
-      is_valid_address ((int *) f->esp + 1);
-      is_valid_address ((int *) f->esp + 2);
+      check_valid_buffer ((int *) f->esp + 1, 4);
+      check_valid_buffer ((int *) f->esp + 2, 4);
       seek (*((int *) f->esp + 1), *((unsigned *) f->esp + 2));
       break;
 
     case SYS_TELL:
-      is_valid_address ((int *) f->esp + 1);
+      check_valid_buffer ((int *) f->esp + 1, 4);
       f->eax = tell (*((int *) f->esp + 1));
       break;
 
