@@ -108,6 +108,17 @@ struct thread
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
 
+    // alarm clock 여기 구현
+    int64_t wakeup_tick;                /* Time to wake up. */
+
+    // priority scheduling 여기 구현
+    // 스레드가 에이징(Aging)을 통해 우선순위가 뻥튀기되기 전의 원래 우선순위를 기억하는 변수입니다.
+    int init_priority;
+
+    // advanced scheduler 여기 구현
+    int nice;                           /* Niceness value (-20 to 20). */
+    int recent_cpu;                     /* Recent CPU time (fixed-point). */
+
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
@@ -135,6 +146,11 @@ struct thread
    Controlled by kernel command-line option "-o mlfqs". */
 extern bool thread_mlfqs;
 
+#ifndef USERPROG
+/* Project #3. */
+extern bool thread_prior_aging;
+#endif
+
 void thread_init (void);
 void thread_start (void);
 
@@ -146,6 +162,18 @@ tid_t thread_create (const char *name, int priority, thread_func *, void *);
 
 void thread_block (void);
 void thread_unblock (struct thread *);
+
+// alarm clock 여기 구현
+// 스레드 지정된 tick 동안 blocked 상태로 전환.
+void thread_sleep (int64_t ticks);
+// 일어날 시간이 된 스레드 깨우기
+void thread_awake (int64_t current_ticks);
+
+// priority scheduling 여기 구현
+// 지금 돌아가고 있는 스레드보다, ready_list에 있는 스레드 중 우선순위가 높은 스레드가 있으면 yield
+void test_max_priority (void);
+bool cmp_priority (const struct list_elem *a, const struct list_elem *b, void *aux);
+void thread_aging (void);
 
 struct thread *thread_current (void);
 tid_t thread_tid (void);
