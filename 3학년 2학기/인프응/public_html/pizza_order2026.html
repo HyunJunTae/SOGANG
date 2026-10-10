@@ -1,0 +1,37 @@
+<HTML> <TITLE>Pizza Order Fill-Out Form Example </TITLE>
+<H1>Please help us to improve the World Wide Web by filling in the following questionaire :  </H1>
+
+<HR>
+<FORM METHOD="POST" ACTION="http://cspro.sogang.ac.kr/~cse20221627/cgi/pizza_order2026Echo.php">
+<H2>Godzilla's Pizza -- Internet Delivery Service </H2>
+Type your name: <INPUT NAME="name"> <P>
+Type your street address: <INPUT NAME="address"> <P>
+Type your phone number: <INPUT NAME="phone"> <P>
+Which toppings would you like? <P>
+<OL>
+<LI> <INPUT TYPE="checkbox" NAME="topping" VALUE="pepperoni"> Pepperoni.
+<LI> <INPUT TYPE="checkbox" NAME="topping" VALUE="sausage"> Sausage.
+<LI> <INPUT TYPE="checkbox" NAME="topping" VALUE="anchovies"> Anchovies.
+</OL>
+How would you like to pay?  Choose any one of the following: <P>
+<OL>
+<LI> <INPUT TYPE="radio" NAME="paymethod" VALUE="cash" CHECKED> Cash.
+<LI> <INPUT TYPE="radio" NAME="paymethod" VALUE="check"> Check.
+<LI> <I>Credit card:</I>
+<UL>
+<LI> <INPUT TYPE="radio" NAME="paymethod" VALUE="mastercard"> Mastercard.
+<LI> <INPUT TYPE="radio" NAME="paymethod" VALUE="visa"> Visa.
+<LI> <INPUT TYPE="radio" NAME="paymethod" VALUE="americanexpress"> American Express.
+</UL>
+</OL>
+
+Would you like the driver to call before leaving the store? <P>
+<DL>
+<DD> <INPUT TYPE="radio" NAME="callfirst" VALUE="yes" CHECKED> <I>Yes.</I>
+<DD> <INPUT TYPE="radio" NAME="callfirst" VALUE="no"> <I>No.</I>
+</DL>
+To order your pizza, press this button: <INPUT TYPE="submit"VALUE="Order Pizza">. <P>
+
+</FORM>
+
+</HTML>

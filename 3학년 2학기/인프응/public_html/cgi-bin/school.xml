@@ -1,0 +1,53 @@
+<school>
+	<student name="munhyeongbin">
+		<id>cse11111111</id>
+		<password>asdf1234</password>
+		<email>1111@naver.com</email>
+		<address>home</address>
+		<phone>010-0000-0000</phone>
+		<schoolname>sognag university</schoolname>
+		<major>Electronic</major>
+		<interests>Else</interests>
+	</student>
+
+	<student name="kimjaeyong">
+		<id>cse22222222</id>
+		<password>asdf5678</password>
+		<email>2222@naver.com</email>
+		<address>Seoul</address>
+		<phone>010-1111-2222</phone>
+		<schoolname>sognag university</schoolname>
+		<major>Computer Science</major>
+		<interests>Else</interests>
+	</student>
+	<student name="parkjisu">
+		<id>cse33333333</id>
+		<password>asdf1011</password>
+		<email>3333@naver.com</email>
+		<address>GawngYang</address>
+		<phone>010-2222-3333</phone>
+		<schoolname>sognag university</schoolname>
+		<major>Mechanical</major>
+		<interests>Electronic</interests>
+	</student>
+	<student name="leedawon">
+		<id>cse44444444</id>
+		<password>qwer1324</password>
+		<email>4444@naver.com</email>
+		<address>paju</address>
+		<phone>010-3333-4444</phone>
+		<schoolname>sognag university</schoolname>
+		<major>Electronic</major>
+		<interests>Chemical and Biomolecular</interests>
+	</student>
+	<student name="choigusick">
+		<id>cse55555555</id>
+		<password>zxcv4321</password>
+		<email>5555@naver.com</email>
+		<address>jeju</address>
+		<phone>010-5555-6666</phone>
+		<schoolname>sognag university</schoolname>
+		<major>Else</major>
+		<interests>Electronic</interests>
+	</student>
+</school>
