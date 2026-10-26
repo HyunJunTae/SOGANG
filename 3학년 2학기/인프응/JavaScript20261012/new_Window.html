@@ -1,0 +1,62 @@
+<HTML><HEAD>
+<TITLE>New Window 3</TITLE>
+<SCRIPT LANGUAGE="JAVASCRIPT">
+<!--  hide      
+function customize(form) {    
+        var address = document.form1.url.value;   
+        var op_tool  = (document.form1.tool.checked== true)  ? 1 : 0;   
+        var op_loc_box  = (document.form1.loc_box.checked == true)  ? 1 : 0; 
+        var op_dir  = (document.form1.dir.checked == true)  ? 1 : 0;    
+        var op_stat  = (document.form1.stat.checked == true)  ? 1 : 0;    
+        var op_menu  = (document.form1.menu.checked == true)  ? 1 : 0;    
+        var op_scroll  = (document.form1.scroll.checked == true)  ? 1 : 0;  
+        var op_resize  = (document.form1.resize.checked == true)  ? 1 : 0;    
+        var op_wid  = document.form1.wid.value;   
+        var op_heigh = document.form1.heigh.value;                 
+        var option = "toolbar=" + op_tool + ",location=" + op_loc_box + ",directories=" 
+                + op_dir + ",status=" + op_stat + ",menubar=" + op_menu + ",scrollbars="  
+                + op_scroll + ",resizable="  + op_resize + ",width=" + op_wid + ",height=" 
+                + op_heigh;
+        var new_win = window.open(address, "NewWindow", option );
+}
+
+function clear(form){ 
+        document.form1.wid.value=""; 
+        document.form1.heigh.value="";
+}
+// done hiding -->
+</SCRIPT>
+</HEAD>
+
+<BODY BGCOLOR="#FFFFFF">
+<CENTER>
+<font size=4 face="arial"><b>Create New Window 2</b><BR><BR></font>
+<p>
+<font size=3 face="궁서">
+<b>어떤 창으로 열건지 원하는 옵션에 체크 하세요.</b></font>
+<p>
+
+<TABLE cellpadding=5 border=2><TR><TD>
+<font size=5 face="arial">
+<PRE><FORM name=form1  ACTION="javascript:" METHOD="POST">
+<INPUT TYPE="text" NAME="url" value="http://plstar.sogang.ac.kr" >: URL
+<INPUT TYPE="checkbox" NAME="tool">: Toolbar
+<INPUT TYPE="checkbox" NAME="loc_box">: Location
+<INPUT TYPE="checkbox" NAME="dir">: Directories
+<INPUT TYPE="checkbox" NAME="stat">: Status
+<INPUT TYPE="checkbox" NAME="menu">: Menubar
+<INPUT TYPE="checkbox" NAME="scroll">: Scrollbars
+<INPUT TYPE="checkbox" NAME="resize">: Resizable
+<INPUT TYPE="text"   NAME="wid" value= >: Width
+<INPUT TYPE="text"  NAME="heigh" value=>: Height
+</TD></TR>
+<TR>
+<BR>
+<TD><CENTER>
+<INPUT TYPE="button" VALUE="ENTER" OnClick="customize(this.form)">
+<INPUT TYPE="reset" VALUE="RESET" onClick="clear(this.form)"></center></TD>
+</PRE></TR>
+</font></TABLE>
+</FORM>
+</body>
+</HTML>

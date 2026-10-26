@@ -1,0 +1,32 @@
+<HTML>
+<HEAD>
+<TITLE></TITLE>
+
+<SCRIPT language="JavaScript">
+var enabled = 0;
+function TOfunc() {
+   TO = window.setTimeout( "TOfunc()", 5000 );
+   var today = new Date();
+   var todaystring = today.toString();
+   var i;
+   var fin = "";
+   var offset = (50  - todaystring.length) / 2;
+
+   if(offset < 0) offset = 0;
+   for(i=0;i<offset;i++) fin += " ";
+   fin += todaystring;
+   document.forms[0].elements[0].value = fin;
+}
+</SCRIPT>
+</HEAD>
+
+<BODY BGCOLOR=WHITE onLoad="TOfunc()">
+<CENTER><font size=4 face="arial"><b>JavaScript Date & Clock</b></font>
+<BR><BR>
+
+<FORM>
+<input type="text" name="disp" value="" size=40>
+</FORM>
+</CENTER>
+</BODY>
+</HTML>

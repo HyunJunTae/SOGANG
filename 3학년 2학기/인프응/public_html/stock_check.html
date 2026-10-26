@@ -1,0 +1,27 @@
+<button id="check">Stock Checking</button>
+<p id="stock">Number of Items: Not Yet</p>
+
+<script>
+const btn = document.querySelector("#check");
+const out = document.querySelector("#stock");
+
+btn.addEventListener("click", async () => {
+  out.textContent = "Checking...";
+
+  try {
+/*    const res = await fetch("http://cspro.sogang.ac.kr/~jhnang/cgi-bin/stock.php"); */
+    const res = await fetch("cgi-bin/stock.php");
+
+    if (!res.ok) {
+      throw new Error("HTTP " + res.status);
+    }
+
+    const data = await res.json();
+    out.innerHTML = "Number of Items : " + data.stock + "<br>" + "Memo : " + data.Memo;
+
+  } catch (err) {
+    out.textContent = "Fail";
+    out.textContent = err;
+  }
+});
+</script>

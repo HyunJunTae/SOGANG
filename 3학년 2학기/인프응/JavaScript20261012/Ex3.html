@@ -1,0 +1,13 @@
+ <html> 
+   <SCRIPT language=JavaScript> 
+   function validate(obj, lowval, hival) { 
+      if ((obj.value < lowval) || (obj.value > hival)) 
+         alert("Invalid Value!") 
+   } 
+   </SCRIPT> 
+   <body> 
+   <B>Enter a number between 18 and 99:</B> 
+   <INPUT TYPE = "text" NAME = "age" SIZE = 3 
+      onChange="validate(this, 18, 99)"> 
+   </body> 
+   </html> 

@@ -1,0 +1,16 @@
+ <html> 
+   <SCRIPT language=JavaScript> 
+   function list(type) {
+          document.write("<" + type + "L>") // <OL>를 표 시
+           for (var i = 1; i < list.arguments.length; i++) // 인자들의 반복
+                     document.write("<LI>" + list.arguments[i])
+           document.write("</" + type + "L>") // </OL>를 표 시
+   }
+
+   </SCRIPT> 
+   <body> 
+  <script>
+list("o", "one", 1967, "three", "etc, etc...")
+  </script>
+   </body> 
+   </html> 

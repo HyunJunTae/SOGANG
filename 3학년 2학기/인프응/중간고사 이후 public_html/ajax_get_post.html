@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>Ajax GET·POST 예제</title>
+</head>
+<body>
+  이름: <input id="name" value="Kim">
+  나이: <input id="age" type="number" value="20">
+
+  <button id="getBtn">GET 조회</button>
+  <button id="postBtn">POST 등록</button>
+
+  <p id="result"></p>
+
+  <script>
+    // 공통: 응답을 읽고 화면 변경
+    async function showResult(res) {
+      if (!res.ok) {
+        throw new Error("HTTP " + res.status);
+      }
+
+      const data = await res.json();
+      document.querySelector("#result").textContent = data.message;
+    }
+
+    // GET: URL 쿼리로 입력값 전송
+    document.querySelector("#getBtn")
+      .addEventListener("click", async () => {
+        const name = document.querySelector("#name").value;
+        const age = Number(document.querySelector("#age").value);
+
+        try {
+          // 서버에 name, age 보내기. cgi-bin/user.php 에 ?랑 qs 문자열 붙여서 보내주기
+          const qs = new URLSearchParams({ name, age });
+          // fetch는 기본값이 GET. fetch로 php 파일에 GET 요청 보내기. 반환된 결과물(response 객체)을 res에 저장.
+          const res = await fetch("cgi-bin/user.php?" + qs.toString());
+
+          await showResult(res);
+        } catch (err) {
+          document.querySelector("#result").textContent = "요청 실패";
+          console.error(err);
+        }
+      });
+
+    // POST: JSON 본문으로 입력값 전송
+    document.querySelector("#postBtn")
+      .addEventListener("click", async () => {
+        const name = document.querySelector("#name").value;
+        const age = Number(document.querySelector("#age").value);
+
+        try {
+          const res = await fetch("cgi-bin/user.php", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ name, age })
+          });
+
+          await showResult(res);
+        } catch (err) {
+          document.querySelector("#result").textContent = "요청 실패";
+          console.error(err);
+        }
+      });
+  </script>
+</body>
+</html>

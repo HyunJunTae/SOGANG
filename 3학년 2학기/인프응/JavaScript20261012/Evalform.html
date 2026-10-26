@@ -1,0 +1,12 @@
+<SCRIPT>
+          function compute(obj) {
+                    obj.result.value = eval(obj.expr.value)
+          }
+          </SCRIPT>
+          <FORM NAME="evalform">
+          Enter an expression: <INPUT TYPE=text NAME="expr" SIZE=20 >
+          <BR>
+          Result: <INPUT TYPE=text NAME="result" SIZE=20 >
+          <BR> 
+          <INPUT TYPE="button" VALUE="Click Me" onClick="compute(this.form)">
+          </FORM>
