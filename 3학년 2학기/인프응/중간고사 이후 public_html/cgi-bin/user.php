@@ -6,7 +6,9 @@ if ($_SERVER["REQUEST_METHOD"] === "GET") {
     $name = $_GET["name"] ?? "";
     $age = (int)($_GET["age"] ?? 0);
 
-} elseif ($_SERVER["REQUEST_METHOD"] === "POST") {
+} 
+
+elseif ($_SERVER["REQUEST_METHOD"] === "POST") {
     // POST: JSON 요청 본문에서 읽기
     $data = json_decode(
         file_get_contents("php://input"),
@@ -16,7 +18,9 @@ if ($_SERVER["REQUEST_METHOD"] === "GET") {
     $name = $data["name"] ?? "";
     $age = (int)($data["age"] ?? 0);
 
-} else {
+} 
+
+else {
     http_response_code(405);
     header("Allow: GET, POST");
 
@@ -27,5 +31,6 @@ if ($_SERVER["REQUEST_METHOD"] === "GET") {
 // 공통 응답
 echo json_encode(
     ["message" => $name . " 수신 완료"],
+    ["age_message" => $age . " 수신 완료"],
     JSON_UNESCAPED_UNICODE
 );

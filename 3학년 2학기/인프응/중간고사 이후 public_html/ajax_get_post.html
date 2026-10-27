@@ -21,7 +21,8 @@
       }
 
       const data = await res.json();
-      document.querySelector("#result").textContent = data.message;
+      // document.querySelector("#result").textContent = data.message;
+      document.querySelector("#result").innerHTML = data.message + "<br"> + data.age_message;
     }
 
     // GET: URL 쿼리로 입력값 전송
@@ -31,9 +32,9 @@
         const age = Number(document.querySelector("#age").value);
 
         try {
-          // 서버에 name, age 보내기. cgi-bin/user.php 에 ?랑 qs 문자열 붙여서 보내주기
+          //// 서버에 name, age 보내기. cgi-bin/user.php 에 ?랑 qs 문자열 붙여서 보내주기
           const qs = new URLSearchParams({ name, age });
-          // fetch는 기본값이 GET. fetch로 php 파일에 GET 요청 보내기. 반환된 결과물(response 객체)을 res에 저장.
+          //// fetch는 기본값이 GET. fetch로 php 파일에 GET 요청 보내기. 반환된 결과물(response 객체)을 res에 저장.
           const res = await fetch("cgi-bin/user.php?" + qs.toString());
 
           await showResult(res);

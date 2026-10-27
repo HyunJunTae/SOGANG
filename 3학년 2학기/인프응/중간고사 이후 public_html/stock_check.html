@@ -6,7 +6,7 @@ const btn = document.querySelector("#check");
 const out = document.querySelector("#stock"); // html의 id가 stock인 요소를 참조.
 
 
-// 원래는 addEventListener("click", 함수) 이렇게 썼었음. 여기서는 async () => {...} 가 통째로 함수.
+//// 원래는 addEventListener("click", 함수) 이렇게 썼었음. 여기서는 async () => {...} 가 통째로 함수.
 btn.addEventListener("click", async () => {
   out.textContent = "Checking...";
 
@@ -18,10 +18,13 @@ btn.addEventListener("click", async () => {
       throw new Error("HTTP " + res.status);
     }
 
+    // res의 본문을 읽어서 json으로 변환함.
     const data = await res.json();
+
+
     // out.textContent = "Number of Items : " + data.stock;
     out.innerHTML = "Number of Items : " + data.stock + "<br>" + "Memo : " + data.Memo;
-    // out.textContent -> out이 가리키는 요소에 텍스트로 내용 넣는거. -> <br> 도 문자 그대로 들어감. innerHTML로 해야 줄바꿈 적용됨.
+    //// out.textContent -> out이 가리키는 요소에 텍스트로 내용 넣는거. -> <br> 도 문자 그대로 들어감. innerHTML로 해야 줄바꿈 적용됨.
 
   } catch (err) {
     out.textContent = "Fail";
