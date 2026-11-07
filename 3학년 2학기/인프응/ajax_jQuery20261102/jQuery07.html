@@ -1,0 +1,27 @@
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+<button id="add">Add</button>
+<ul id="list"></ul>
+
+
+<script>
+  $(function () {
+  // Add 버튼: 새 항목과 삭제 버튼 추가
+  $('#add').on('click', function () {
+    const $li = $('<li>').text('New item ');
+
+    $li.append(
+      $('<button>').addClass('del').text('Delete')
+    );
+
+    $('#list').append($li);
+  });
+
+  // 이벤트 위임: 나중에 추가된 삭제 버튼에도 적용
+  $('#list').on('click', '.del', function () {
+    $(this).closest('li').remove();
+  });
+});
+</script>
+
+

@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>도서 검색 실습</title>
+
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+</head>
+<body>
+  <h1>도서 검색</h1>
+
+  <form id="searchForm">
+    <input id="q" type="text" placeholder="검색어를 입력하세요">
+    <button type="submit">검색</button>
+  </form>
+
+  <p id="message"></p>
+  <ul id="results"></ul>
+
+  <script>
+    $(function () {
+      $('#searchForm').on('submit', function (e) {
+        // 기본 폼 제출에 의한 페이지 이동 방지
+        e.preventDefault();
+
+        const q = $('#q').val().trim();
+
+        // 이전 결과 삭제
+        $('#results').empty();
+        $('#message').text('');
+
+        // 빈 검색어는 서버에 보내지 않음
+        if (!q) {
+          $('#message').text('검색어를 입력하세요.');
+          return;
+        }
+
+        $('#message').text('검색 중...');
+        $('#searchForm button').prop('disabled', true);
+        
+        
+        $.getJSON('cgi-bin/book_search.php', { q: q }) /* (1) 여기를 채워라 */
+          .done(function (books) {
+            if (books.length === 0) {
+              $('#message').text('검색 결과가 없습니다.');
+              return;
+            }
+
+            $('#message').text(books.length + '권을 찾았습니다.');
+
+            books.forEach(function (book) {
+              $('<li>')
+                .text(/* (2) 여기를 채워라 */ )
+                .appendTo('#results');
+            });
+          })
+          .fail(function () {
+            $('#message').text('검색 요청에 실패했습니다.');
+          })
+          .always(function () {
+            $('#searchForm button').prop('disabled', false);
+          });
+      });
+    });
+  </script>
+</body>
+</html>
+
+
+// html 에서 q라는 id를 가지는 입력 창에 검색어 입력받은 다음, 
+// 자바 스크립트에서 전처리하고 검사해서 q라는 이름으로 php에 넘겨주RL.
+// 그리고 getjson으로 보내니까 php에서는 GET으로 받기.

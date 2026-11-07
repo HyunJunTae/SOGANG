@@ -1,0 +1,26 @@
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+<button id="load">Load student</button>
+<p id="result"></p>
+
+
+<script>
+  $(function () {
+  $('#load').on('click', function () {
+    $('#result').text('Loading...');
+
+    $.ajax({
+      url: 'cgi-bin/student.php',
+      method: 'GET',
+      data: { id: 7 },
+      dataType: 'json'
+    })
+      .done(function (data) {
+        $('#result').text(data.name);
+      })
+      .fail(function () {
+        $('#result').text('Request failed');
+      });
+  });
+});
+</script>

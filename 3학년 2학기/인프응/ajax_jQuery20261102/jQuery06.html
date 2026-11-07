@@ -1,0 +1,26 @@
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+<button id="countBtn">Click</button>
+<p id="count">0</p>
+
+
+<script>
+  $(function () {
+  let n = 0;
+
+  $('#countBtn').on('click', function () {
+    n += 1;
+    $('#count').text(n);
+  });
+
+  $('#countBtn').on('dblclick', function () {
+    n -= 3;
+    $('#count').text(n);
+  });
+
+
+
+});
+</script>
+
+

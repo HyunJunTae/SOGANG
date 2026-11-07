@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Ajax Search Example</title>
+
+  <!-- 같은 폴더에 jQuery full build 파일을 저장 -->
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+</head> <body>
+  <form id="searchForm">
+    <input id="q" placeholder="Search...">
+    <button type="submit">Search</button>
+  </form>
+
+  <ul id="results"></ul>
+
+  <script>
+    $(function () {
+      $('#searchForm').on('submit', function (e) {
+        // 기본 폼 제출에 의한 페이지 이동 방지
+        e.preventDefault();
+
+        // 입력값을 읽고 앞뒤 공백 제거
+        const q = $('#q').val().trim();
+        if (!q) return;
+
+        // 이전 검색 결과 삭제
+        $('#results').empty();
+
+        // GET 요청: api/search.php?q=검색어
+        $.getJSON('cgi-bin/jQuery_search.php', { q: q })
+          .done(function (items) {
+            items.forEach(function (item) {
+              $('<li>').text(item.title).appendTo('#results');
+            });
+          })
+          .fail(function () {
+            $('<li>').text('Search failed').appendTo('#results');
+          });
+      });
+    });
+  </script> </body> </html>

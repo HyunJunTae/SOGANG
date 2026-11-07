@@ -1,0 +1,15 @@
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+<button id="toggle">Show / hide answer</button>
+<div id="answer">jQuery is a JavaScript library.</div>
+
+
+<script>
+  $(function () {
+  	$('#toggle').on('click', function () {
+    	$('#answer').stop(true, true).fadeToggle(1000);
+  });
+});
+</script>
+
+
