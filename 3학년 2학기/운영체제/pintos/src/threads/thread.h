@@ -5,6 +5,8 @@
 #include <list.h>
 #include <stdint.h>
 #include "threads/synch.h"
+// ch3 구현 - 보조 페이지 해시 테이블 사용을 위한 헤더 포함
+#include <hash.h>
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -136,6 +138,13 @@ struct thread
     // synchronization 여기 구현 - 현재 실행 중인 파일 객체 (쓰기 방지용)
     struct file *run_file;              // 현재 실행 중인 파일 객체
 #endif
+
+    // ch3 구현 - 스레드별 보조 페이지 테이블(SPT), mmap 리스트 및 시스템 콜 진입 시 유저 스택 포인터 백업 변수
+    struct hash spt_table;              /* 프로세스별 보조 페이지 해시 테이블 */
+    void *saved_user_esp;               /* 커널 모드(시스템 콜) 진입 시점의 유저 esp */
+    bool spt_initialized;               /* 보조 페이지 테이블 초기화 완료 여부 */
+    struct list mmap_list;              /* 프로세스가 매핑한 mmap_desc 리스트 */
+    int next_mapid;                     /* 다음에 할당할 mmap ID (초기값: 1) */
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */

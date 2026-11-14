@@ -19,6 +19,10 @@
 #include "threads/vaddr.h"
 #include "threads/malloc.h"
 #include "userprog/syscall.h"
+// ch3 구현 - 가상 메모리(보조 페이지 테이블, 프레임, 스왑) 헤더 포함
+#include "vm/page.h"
+#include "vm/frame.h"
+#include "vm/swap.h"
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
@@ -87,6 +91,8 @@ start_process (void *file_name_)
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
+  // ch3 구현 - 유저 프로세스 실행 전 스레드별 보조 페이지 테이블(SPT) 초기화
+  spt_init (&thread_current ()->spt_table);
   success = load (file_name, &if_.eip, &if_.esp);
 
   // 시스템콜 여기 구현 - 자식 로드 완료 상태를 부모에게 기록하고, 대기 중인 부모를 깨움
@@ -209,6 +215,10 @@ process_exit (void)
 
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
+  // ch3 구현 - 프로세스 종료 시 매핑된 모든 mmap 파일을 언매핑(dirty 반영)하고 보조 페이지 테이블(SPT) 자원 해제
+  munmap (-1);
+  spt_destroy (&cur->spt_table);
+
   pd = cur->pagedir;
   if (pd != NULL) 
     {
@@ -598,29 +608,32 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
       size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
       size_t page_zero_bytes = PGSIZE - page_read_bytes;
 
-      /* Get a page of memory. */
-      uint8_t *kpage = palloc_get_page (PAL_USER);
-      if (kpage == NULL)
+      // ch3 구현 - 즉시 물리 프레임을 할당하는 대신 보조 페이지 테이블(SPT) 엔트리를 생성하여 지연 로딩(Lazy Loading) 설정
+      struct spt_entry *spte = malloc (sizeof (struct spt_entry));
+      if (spte == NULL)
         return false;
 
-      /* Load this page. */
-      if (file_read (file, kpage, page_read_bytes) != (int) page_read_bytes)
-        {
-          palloc_free_page (kpage);
-          return false; 
-        }
-      memset (kpage + page_read_bytes, 0, page_zero_bytes);
+      memset (spte, 0, sizeof (struct spt_entry));
+      spte->page_type = PAGE_SOURCE_ELF;
+      spte->user_vaddr = upage;
+      spte->is_writable = writable;
+      spte->in_memory = false;
+      spte->is_pinned = false;
+      spte->mapped_file = file;
+      spte->file_offset = ofs;
+      spte->read_bytes = page_read_bytes;
+      spte->zero_bytes = page_zero_bytes;
 
-      /* Add the page to the process's address space. */
-      if (!install_page (upage, kpage, writable)) 
+      if (!spt_insert_page (&thread_current ()->spt_table, spte))
         {
-          palloc_free_page (kpage);
-          return false; 
+          free (spte);
+          return false;
         }
 
       /* Advance. */
       read_bytes -= page_read_bytes;
       zero_bytes -= page_zero_bytes;
+      ofs += page_read_bytes;
       upage += PGSIZE;
     }
   return true;
@@ -631,17 +644,40 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 static bool
 setup_stack (void **esp) 
 {
-  uint8_t *kpage;
   bool success = false;
 
-  kpage = palloc_get_page (PAL_USER | PAL_ZERO);
-  if (kpage != NULL) 
+  // ch3 구현 - 최초 유저 스택 페이지(PHYS_BASE - PGSIZE)를 프레임 할당기로 할당하고 SPT에 등록
+  void *stack_bottom = ((uint8_t *) PHYS_BASE) - PGSIZE;
+  struct frame_slot *stack_frame = allocate_user_frame (PAL_USER | PAL_ZERO);
+  if (stack_frame != NULL) 
     {
-      success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
+      success = install_page (stack_bottom, stack_frame->kernel_vaddr, true);
       if (success)
-        *esp = PHYS_BASE;
+        {
+          struct spt_entry *spte = malloc (sizeof (struct spt_entry));
+          if (spte == NULL)
+            {
+              release_user_frame (stack_frame->kernel_vaddr);
+              return false;
+            }
+          memset (spte, 0, sizeof (struct spt_entry));
+          spte->page_type = PAGE_SOURCE_ANON;
+          spte->user_vaddr = stack_bottom;
+          spte->is_writable = true;
+          spte->in_memory = true;
+          spte->is_pinned = false;
+
+          stack_frame->spte = spte;
+          if (!spt_insert_page (&thread_current ()->spt_table, spte))
+            {
+              free (spte);
+              release_user_frame (stack_frame->kernel_vaddr);
+              return false;
+            }
+          *esp = PHYS_BASE;
+        }
       else
-        palloc_free_page (kpage);
+        release_user_frame (stack_frame->kernel_vaddr);
     }
   return success;
 }
@@ -664,4 +700,75 @@ install_page (void *upage, void *kpage, bool writable)
      address, then map our page there. */
   return (pagedir_get_page (t->pagedir, upage) == NULL
           && pagedir_set_page (t->pagedir, upage, kpage, writable));
+}
+
+// ch3 구현 - 외부 모듈(vm/page.c 등)에서 하드웨어 페이지 테이블 매핑을 수행할 수 있도록 래퍼 함수 제공
+bool
+install_user_page (void *upage, void *kpage, bool writable)
+{
+  return install_page (upage, kpage, writable);
+}
+
+// ch3 구현 - Page Fault 발생 주소가 유효한 스택 확장(Stack Growth) 영역인지 판단 (esp - 32 이상 및 최대 8MB 이내)
+bool
+verify_stack_growth (const void *fault_addr, void *esp)
+{
+  if (fault_addr == NULL || !is_user_vaddr (fault_addr))
+    return false;
+
+  if ((uintptr_t) fault_addr < (uintptr_t) PHYS_BASE - MAX_STACK_BOUNDARY)
+    return false;
+
+  if ((uintptr_t) fault_addr < (uintptr_t) esp - 32)
+    return false;
+
+  return true;
+}
+
+// ch3 구현 - 스택 확장 시 새로운 스택 페이지(4KB)를 할당하고 보조 페이지 테이블 및 하드웨어 페이지 테이블에 매핑
+bool
+expand_user_stack (void *fault_addr)
+{
+  void *target_upage = pg_round_down (fault_addr);
+  if ((uintptr_t) target_upage < (uintptr_t) PHYS_BASE - MAX_STACK_BOUNDARY)
+    return false;
+
+  if (spt_find_page (target_upage) != NULL)
+    return true;
+
+  struct spt_entry *spte = malloc (sizeof (struct spt_entry));
+  if (spte == NULL)
+    return false;
+
+  struct frame_slot *new_frame = allocate_user_frame (PAL_USER | PAL_ZERO);
+  if (new_frame == NULL)
+    {
+      free (spte);
+      return false;
+    }
+
+  memset (spte, 0, sizeof (struct spt_entry));
+  spte->page_type = PAGE_SOURCE_ANON;
+  spte->user_vaddr = target_upage;
+  spte->is_writable = true;
+  spte->in_memory = true;
+  spte->is_pinned = false;
+
+  new_frame->spte = spte;
+
+  if (!install_page (target_upage, new_frame->kernel_vaddr, true))
+    {
+      release_user_frame (new_frame->kernel_vaddr);
+      free (spte);
+      return false;
+    }
+
+  if (!spt_insert_page (&thread_current ()->spt_table, spte))
+    {
+      release_user_frame (new_frame->kernel_vaddr);
+      free (spte);
+      return false;
+    }
+
+  return true;
 }

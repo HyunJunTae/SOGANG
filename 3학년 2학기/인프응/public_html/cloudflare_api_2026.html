@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cloudflare Workers AI</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { max-width: 760px; margin: 32px auto; padding: 0 20px; font: 16px/1.6 system-ui, sans-serif; color: #222; }
+    h1 { font-size: 26px; }
+    fieldset { border: 0; padding: 0; margin: 0; }
+    label { display: block; margin: 16px 0 5px; font-weight: 600; }
+    input:not([type="checkbox"]), select, textarea, button { width: 100%; padding: 10px; font: inherit; border: 1px solid #bbb; border-radius: 6px; }
+    textarea { resize: vertical; }
+    button { margin-top: 16px; background: #155ec1; color: white; border: 0; cursor: pointer; }
+    button:disabled { opacity: .6; cursor: wait; }
+    details { margin-top: 16px; }
+    summary { cursor: pointer; }
+    small { color: #666; }
+    pre { white-space: pre-wrap; overflow-wrap: anywhere; padding: 16px; background: #f4f5f7; border-radius: 6px; font: inherit; }
+    img { display: block; max-width: 100%; max-height: 480px; margin: 12px 0; border-radius: 6px; }
+    #runStatus { white-space: pre-wrap; overflow-wrap: anywhere; }
+    #jsonOutput { max-height: 400px; overflow: auto; font: 13px/1.5 ui-monospace, monospace; }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <h1>Cloudflare Workers AI</h1>
+  <form id="requestForm">
+    <fieldset id="controls">
+      <label for="endpoint">PHP 경로</label>
+      <input id="endpoint" value="cgi-bin/cloudflare_api_2026.php" required spellcheck="false">
+      <small>두 파일이 같은 폴더에 있으면 cloudflare_api_2026.php로 변경하세요.</small>
+
+      <label for="taskSelect">작업</label>
+      <select id="taskSelect" name="taskType">
+        <option value="text-classification">텍스트 분류</option>
+        <option value="text-generation">텍스트 생성</option>
+        <option value="image-analysis">이미지 분석</option>
+        <option value="image-classification">이미지 분류</option>
+        <option value="text-to-image">이미지 생성</option>
+      </select>
+      <label for="modelSelect">모델</label>
+      <select id="modelSelect" name="model"></select>
+
+      <div id="imageSection" hidden>
+        <label for="imageInput">이미지 (JPEG · PNG · WEBP, 2MB 이하)</label>
+        <input id="imageInput" name="image" type="file" accept="image/jpeg,image/png,image/webp">
+        <img id="preview" alt="선택한 이미지" hidden>
+      </div>
+      <div id="promptSection">
+        <label for="prompt">질문 또는 프롬프트</label>
+        <small id="classifyHint" hidden>영어 문장만 입력할 수 있어요. 결과는 POSITIVE(긍정) / NEGATIVE(부정) 확률로 표시됩니다.</small>
+        <textarea id="prompt" name="prompt" rows="4" maxlength="4000" required></textarea>
+      </div>
+      <div id="tokensSection">
+        <label for="maxTokens">최대 출력 토큰</label>
+        <select id="maxTokens" name="max_tokens">
+          <option>256</option><option selected>512</option><option>1024</option><option>2048</option>
+        </select>
+      </div>
+      <div id="stepsSection" hidden>
+        <label for="steps">이미지 생성 단계</label>
+        <select id="steps" name="steps"><option>2</option><option selected>4</option><option>8</option></select>
+      </div>
+      <details id="licenseSection" hidden>
+        <summary>이미지 분석 모델 최초 이용 동의</summary>
+        <label><input id="licenseConsent" type="checkbox"> <a href="https://developers.cloudflare.com/workers-ai/models/llama-3.2-11b-vision-instruct/" target="_blank" rel="noopener noreferrer">Meta 라이선스 및 이용 정책</a>을 확인했으며 동의합니다.</label>
+        <button id="licenseBtn" type="button">동의 요청 보내기</button>
+      </details>
+      <button type="submit">실행</button>
+    </fieldset>
+  </form>
+  <p id="runStatus" role="status" aria-live="polite"></p>
+  <pre id="resultBox" hidden></pre>
+  <div id="generatedSection" hidden>
+    <img id="generatedImage" alt="생성된 이미지">
+    <a id="downloadImage" download="cloudflare_generated.png">이미지 다운로드</a>
+  </div>
+  <details id="jsonDetails" hidden>
+    <summary>JSON 응답 보기</summary>
+    <small>raw_response는 정리 전 Cloudflare 응답입니다. 인증 정보는 가립니다.</small>
+    <pre id="jsonOutput"></pre>
+  </details>
+
+  <script>
+    const $ = id => document.getElementById(id);
+    const models = {
+      'text-classification': [['@cf/huggingface/distilbert-sst-2-int8', 'distilbert sst 2 int8']],
+      'text-generation': [
+        ['@cf/meta/llama-3.2-3b-instruct', 'Llama 3.2 3B'],
+        ['@cf/meta/llama-3.2-1b-instruct', 'Llama 3.2 1B'],
+        ['@cf/meta/llama-3.1-8b-instruct-fp8-fast', 'Llama 3.1 8B FP8 Fast'],
+        ['@cf/qwen/qwen3.8-27b', 'qwen3.8 27b']
+      ],
+      'image-analysis': [['@cf/meta/llama-3.2-11b-vision-instruct', 'Llama 3.2 11B Vision']],
+      'image-classification': [['@cf/microsoft/resnet-50', 'ResNet-50']],
+      'text-to-image': [['@cf/black-forest-labs/flux-1-schnell', 'FLUX.1 schnell']]
+    };
+    let jsonResponse = null;
+
+    function clearResult() {
+      $('resultBox').hidden = $('generatedSection').hidden = $('jsonDetails').hidden = true;
+      $('jsonDetails').open = false;
+      $('jsonOutput').textContent = '';
+      jsonResponse = null;
+    }
+    $('jsonDetails').addEventListener('toggle', () => {
+      if ($('jsonDetails').open) $('jsonOutput').textContent = JSON.stringify(jsonResponse, null, 2);
+    });
+
+    // 작업 선택
+    function selectTask() {
+      const task = $('taskSelect').value;
+      const needsImage = task === 'image-analysis' || task === 'image-classification';
+      const needsTokens = task === 'text-generation' || task === 'image-analysis';
+      $('modelSelect').replaceChildren(...models[task].map(([id, name]) => new Option(name, id)));
+      $('imageSection').hidden = $('imageInput').disabled = !needsImage;
+      $('imageInput').required = needsImage;
+      $('promptSection').hidden = $('prompt').disabled = task === 'image-classification';
+      $('prompt').required = task === 'text-generation' || task === 'text-to-image' || task === 'text-classification';
+      $('prompt').maxLength = task === 'text-to-image' ? 2048 : 4000;
+      $('prompt').placeholder = task === 'image-analysis' ? '비워두면 이미지 설명을 요청합니다.' : '';
+      $('tokensSection').hidden = $('maxTokens').disabled = !needsTokens;
+      $('maxTokens').value = task === 'image-analysis' ? '256' : '512';
+      $('stepsSection').hidden = $('steps').disabled = task !== 'text-to-image';
+      $('licenseSection').hidden = task !== 'image-analysis';
+      $('classifyHint').hidden = task !== 'text-classification';
+      clearResult();
+      $('runStatus').textContent = '';
+    }
+    $('taskSelect').addEventListener('change', selectTask);
+    selectTask();
+
+    let previewUrl;
+    $('imageInput').addEventListener('change', () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      const file = $('imageInput').files[0];
+      $('preview').hidden = !file;
+      if (file) $('preview').src = previewUrl = URL.createObjectURL(file);
+    });
+
+    // PHP 호출
+    async function request(body) {
+      if (!/^https?:$/.test(location.protocol)) throw new Error('HTML을 PHP 서버 주소로 열어 주세요.');
+      const url = new URL($('endpoint').value.trim(), location.href);
+      if (url.origin !== location.origin) throw new Error('HTML과 PHP를 같은 서버에서 실행해 주세요.');
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 150000);
+      try {
+        const response = await fetch(url, { method: 'POST', body, signal: controller.signal });
+        let data;
+        try { data = await response.json(); }
+        catch { throw new Error('PHP의 JSON 응답이 아닙니다. PHP 경로와 서버 실행 설정을 확인하세요.'); }
+        jsonResponse = data;
+        $('jsonDetails').hidden = false;
+        if (!response.ok || !data || data.ok !== true) throw new Error(data?.message || `요청 실패 (${response.status})`);
+        return data;
+      } finally { clearTimeout(timer); }
+    }
+
+    // 결과 표시
+    async function run(body) {
+      if ($('controls').disabled) return;
+      $('controls').disabled = true;
+      clearResult();
+      $('runStatus').textContent = '처리 중…';
+      try {
+        const data = await request(body);
+        if (data.kind === 'image') {
+          const uri = data.image.data_uri;
+          if (!/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(uri)) throw new Error('이미지 응답 형식이 잘못되었습니다.');
+          $('generatedImage').src = $('downloadImage').href = uri;
+          $('downloadImage').download = 'cloudflare_generated.' + uri.match(/^data:image\/(\w+);/)[1];
+          $('generatedSection').hidden = false;
+        } else if (data.kind === 'text' || data.kind === 'classification') {
+          $('resultBox').textContent = data.kind === 'text' ? data.result :
+            data.predictions.map(row => `${row.label}: ${(row.score * 100).toFixed(2)}%`).join('\n');
+          $('resultBox').hidden = false;
+        }
+        $('runStatus').textContent = data.message || '완료';
+      } catch (error) {
+        $('runStatus').textContent = error.name === 'AbortError' ? '응답 시간이 초과되었습니다.' : error.message;
+      } finally { $('controls').disabled = false; }
+    }
+    $('requestForm').addEventListener('submit', event => {
+      event.preventDefault();
+      const file = $('imageInput').files[0];
+      if (!$('imageInput').disabled && file && file.size > 2 * 1024 * 1024) {
+        $('runStatus').textContent = '이미지는 2MB 이하여야 합니다.';
+        return;
+      }
+      run(new FormData($('requestForm')));
+    });
+    $('licenseBtn').addEventListener('click', () => {
+      if (!$('licenseConsent').checked) {
+        $('runStatus').textContent = '이용 정책을 확인하고 동의 체크박스를 선택해 주세요.';
+        return;
+      }
+      const body = new FormData();
+      body.set('action', 'agree-license');
+      body.set('license_consent', '1');
+      run(body);
+    });
+  </script>
+</body>
+</html>
+

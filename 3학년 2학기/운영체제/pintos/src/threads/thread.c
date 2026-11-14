@@ -797,6 +797,9 @@ init_thread (struct thread *t, const char *name, int priority)
   sema_init (&t->load_sema, 0);
   t->load_success = false;
 #endif
+  // ch3 구현 - 스레드 생성 시 메모리 매핑(mmap) 리스트 및 ID 초기화
+  list_init (&t->mmap_list);
+  t->next_mapid = 1;
 
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);

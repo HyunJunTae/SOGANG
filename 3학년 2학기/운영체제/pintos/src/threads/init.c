@@ -37,6 +37,11 @@
 #include "filesys/filesys.h"
 #include "filesys/fsutil.h"
 #endif
+// ch3 구현 - 가상 메모리(프레임 테이블 및 스왑 테이블) 헤더 포함
+#ifdef VM
+#include "vm/frame.h"
+#include "vm/swap.h"
+#endif
 
 /* Page directory with kernel mappings only. */
 uint32_t *init_page_dir;
@@ -98,6 +103,10 @@ main (void)
   palloc_init (user_page_limit);
   malloc_init ();
   paging_init ();
+  // ch3 구현 - 물리 프레임 관리 테이블 초기화
+#ifdef VM
+  frame_table_init ();
+#endif
 
   /* Segmentation. */
 #ifdef USERPROG
@@ -125,6 +134,10 @@ main (void)
   ide_init ();
   locate_block_devices ();
   filesys_init (format_filesys);
+  // ch3 구현 - 블록 장치 탐색 직후 스왑 디스크 테이블 초기화
+#ifdef VM
+  swap_table_init ();
+#endif
 #endif
 
   printf ("Boot complete.\n");

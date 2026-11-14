@@ -20,4 +20,8 @@ int filesize (int fd);
 void seek (int fd, unsigned position);
 unsigned tell (int fd);
 
+// ch3 구현 - 메모리 매핑(mmap, munmap) 시스템 콜 함수 선언
+int mmap (int fd, void *addr);
+void munmap (int mapid);
+
 #endif /* userprog/syscall.h */

@@ -5,6 +5,11 @@
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 #include "userprog/syscall.h"
+// ch3 구현 - 가상 메모리 폴트 처리 및 스택 확장을 위한 헤더 포함
+#include "threads/vaddr.h"
+#include "userprog/process.h"
+#include "vm/page.h"
+#include "vm/frame.h"
 
 /* Number of page faults processed. */
 static long long page_fault_cnt;
@@ -148,6 +153,33 @@ page_fault (struct intr_frame *f)
   not_present = (f->error_code & PF_P) == 0;
   write = (f->error_code & PF_W) != 0;
   user = (f->error_code & PF_U) != 0;
+
+  // ch3 구현 - Page Fault 핸들러 구현 (권한 위반 및 커널 주소 접근 시 즉시 종료, 유효한 참조 또는 스택 확장 시 복구)
+  if (fault_addr == NULL || !is_user_vaddr (fault_addr) || !not_present)
+    {
+      exit (-1);
+    }
+
+  struct spt_entry *spte = spt_find_page (fault_addr);
+  if (spte != NULL)
+    {
+      if (write && !spte->is_writable)
+        exit (-1);
+
+      if (handle_mm_fault (spte))
+        return;
+    }
+  else
+    {
+      void *effective_esp = user ? f->esp : thread_current ()->saved_user_esp;
+      if (verify_stack_growth (fault_addr, effective_esp))
+        {
+          if (expand_user_stack (fault_addr))
+            return;
+        }
+    }
+
+  exit (-1);
 
   // 유저 모드에서 잘못된 주소 접근(Page Fault)이 발생한 경우 프로세스를 안전하게 종료(-1)
   if (user)
