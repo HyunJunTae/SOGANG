@@ -441,15 +441,25 @@ load (const char *file_name, void (**eip) (void), void **esp)
 
   
   
+  // ch3 구현 - setup_stack() 내부 프레임 할당 시 filesys_lock과 vm_global_lock 간 교착 상태(Deadlock) 방지를 위해 락 일시 해제
+  lock_release (&filesys_lock);
+
   /* Set up stack. */
   if (!setup_stack (esp))
-    goto done;
+    {
+      lock_acquire (&filesys_lock);
+      goto done;
+    }
+
+  lock_acquire (&filesys_lock);
 
 
   
   // ★ 여기를 수정해야한다! -> 여기서 유저 스택에 echo, x 하나씩 넣어줘야함.
   // 인자들을 유저 스택에 넣어주기.
   argument_stack (argv, argc, esp);
+  // ch3 구현 - 인자 스택 세팅이 완료되었으므로 최초 스택 페이지의 Pin 고정 해제
+  unpin_user_buffer (((uint8_t *) PHYS_BASE) - PGSIZE, PGSIZE);
 
   // 디버깅용: 스택 메모리 덤프 출력 (과제 완료 후 주석 처리 가능)
   // hex_dump ((uintptr_t) *esp, *esp, PHYS_BASE - *esp, true);
@@ -646,39 +656,53 @@ setup_stack (void **esp)
 {
   bool success = false;
 
-  // ch3 구현 - 최초 유저 스택 페이지(PHYS_BASE - PGSIZE)를 프레임 할당기로 할당하고 SPT에 등록
+  // ch3 구현 - 최초 유저 스택 페이지(PHYS_BASE - PGSIZE)를 프레임 할당기로 할당하고 SPT에 등록 (초기 인자 세팅 중 Eviction 방지를 위해 Pinned 처리)
+  bool held = lock_held_by_current_thread (&vm_global_lock);
+  if (!held)
+    lock_acquire (&vm_global_lock);
+
   void *stack_bottom = ((uint8_t *) PHYS_BASE) - PGSIZE;
   struct frame_slot *stack_frame = allocate_user_frame (PAL_USER | PAL_ZERO);
   if (stack_frame != NULL) 
     {
+      struct spt_entry *spte = malloc (sizeof (struct spt_entry));
+      if (spte == NULL)
+        {
+          release_user_frame (stack_frame->kernel_vaddr);
+          if (!held)
+            lock_release (&vm_global_lock);
+          return false;
+        }
+      memset (spte, 0, sizeof (struct spt_entry));
+      spte->page_type = PAGE_SOURCE_ANON;
+      spte->user_vaddr = stack_bottom;
+      spte->is_writable = true;
+      spte->in_memory = true;
+      spte->is_pinned = true;
+
+      stack_frame->spte = spte;
       success = install_page (stack_bottom, stack_frame->kernel_vaddr, true);
       if (success)
         {
-          struct spt_entry *spte = malloc (sizeof (struct spt_entry));
-          if (spte == NULL)
-            {
-              release_user_frame (stack_frame->kernel_vaddr);
-              return false;
-            }
-          memset (spte, 0, sizeof (struct spt_entry));
-          spte->page_type = PAGE_SOURCE_ANON;
-          spte->user_vaddr = stack_bottom;
-          spte->is_writable = true;
-          spte->in_memory = true;
-          spte->is_pinned = false;
-
-          stack_frame->spte = spte;
           if (!spt_insert_page (&thread_current ()->spt_table, spte))
             {
               free (spte);
               release_user_frame (stack_frame->kernel_vaddr);
+              if (!held)
+                lock_release (&vm_global_lock);
               return false;
             }
           *esp = PHYS_BASE;
         }
       else
-        release_user_frame (stack_frame->kernel_vaddr);
+        {
+          free (spte);
+          release_user_frame (stack_frame->kernel_vaddr);
+        }
     }
+
+  if (!held)
+    lock_release (&vm_global_lock);
   return success;
 }
 
@@ -733,17 +757,31 @@ expand_user_stack (void *fault_addr)
   if ((uintptr_t) target_upage < (uintptr_t) PHYS_BASE - MAX_STACK_BOUNDARY)
     return false;
 
+  bool held = lock_held_by_current_thread (&vm_global_lock);
+  if (!held)
+    lock_acquire (&vm_global_lock);
+
   if (spt_find_page (target_upage) != NULL)
-    return true;
+    {
+      if (!held)
+        lock_release (&vm_global_lock);
+      return true;
+    }
 
   struct spt_entry *spte = malloc (sizeof (struct spt_entry));
   if (spte == NULL)
-    return false;
+    {
+      if (!held)
+        lock_release (&vm_global_lock);
+      return false;
+    }
 
   struct frame_slot *new_frame = allocate_user_frame (PAL_USER | PAL_ZERO);
   if (new_frame == NULL)
     {
       free (spte);
+      if (!held)
+        lock_release (&vm_global_lock);
       return false;
     }
 
@@ -752,7 +790,7 @@ expand_user_stack (void *fault_addr)
   spte->user_vaddr = target_upage;
   spte->is_writable = true;
   spte->in_memory = true;
-  spte->is_pinned = false;
+  spte->is_pinned = true;
 
   new_frame->spte = spte;
 
@@ -760,6 +798,8 @@ expand_user_stack (void *fault_addr)
     {
       release_user_frame (new_frame->kernel_vaddr);
       free (spte);
+      if (!held)
+        lock_release (&vm_global_lock);
       return false;
     }
 
@@ -767,8 +807,13 @@ expand_user_stack (void *fault_addr)
     {
       release_user_frame (new_frame->kernel_vaddr);
       free (spte);
+      if (!held)
+        lock_release (&vm_global_lock);
       return false;
     }
 
+  spte->is_pinned = false;
+  if (!held)
+    lock_release (&vm_global_lock);
   return true;
 }

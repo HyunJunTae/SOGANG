@@ -17,6 +17,9 @@ struct frame_slot
     struct list_elem clock_elem;/* 전역 프레임 리스트(Clock 순환 큐) 연결 원소 */
   };
 
+// ch3 구현 - 전역 프레임/스왑/페이지폴트 동기화 락 선언
+extern struct lock vm_global_lock;
+
 // ch3 구현 - 프레임 관리 초기화, 할당, 해제 및 고정(Pinning) 함수 선언
 void frame_table_init (void);
 struct frame_slot *allocate_user_frame (enum palloc_flags flags);

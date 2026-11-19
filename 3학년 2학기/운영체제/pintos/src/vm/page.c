@@ -31,6 +31,9 @@ spt_addr_less (const struct hash_elem *elem_a,
   return spte_a->user_vaddr < spte_b->user_vaddr;
 }
 
+// ch3 구현 - 전역 프레임/스왑/페이지폴트 동기화 락 참조
+extern struct lock vm_global_lock;
+
 // ch3 구현 - 프로세스 종료 시 각 보조 페이지 엔트리가 점유한 물리 프레임 및 스왑 슬롯 해제
 static void
 spt_entry_cleanup (struct hash_elem *elem, void *aux UNUSED)
@@ -43,9 +46,10 @@ spt_entry_cleanup (struct hash_elem *elem, void *aux UNUSED)
       if (kaddr != NULL)
         release_user_frame (kaddr);
     }
-  else if (spte->page_type == PAGE_SOURCE_ANON)
+  else if (spte->in_swap)
     {
       swap_clear_slot (spte->swap_index);
+      spte->in_swap = false;
     }
 
   free (spte);
@@ -65,8 +69,10 @@ spt_destroy (struct hash *spt_table)
 {
   if (!thread_current ()->spt_initialized)
     return;
+  lock_acquire (&vm_global_lock);
   hash_destroy (spt_table, spt_entry_cleanup);
   thread_current ()->spt_initialized = false;
+  lock_release (&vm_global_lock);
 }
 
 // ch3 구현 - 가상 주소(vaddr)가 속한 페이지의 보조 페이지 엔트리 검색
@@ -99,8 +105,16 @@ spt_insert_page (struct hash *spt_table, struct spt_entry *spte)
 bool
 spt_delete_page (struct hash *spt_table, struct spt_entry *spte)
 {
+  bool held = lock_held_by_current_thread (&vm_global_lock);
+  if (!held)
+    lock_acquire (&vm_global_lock);
+
   if (hash_delete (spt_table, &spte->spt_elem) == NULL)
-    return false;
+    {
+      if (!held)
+        lock_release (&vm_global_lock);
+      return false;
+    }
 
   if (spte->in_memory)
     {
@@ -108,12 +122,15 @@ spt_delete_page (struct hash *spt_table, struct spt_entry *spte)
       if (kaddr != NULL)
         release_user_frame (kaddr);
     }
-  else if (spte->page_type == PAGE_SOURCE_ANON)
+  else if (spte->in_swap)
     {
       swap_clear_slot (spte->swap_index);
+      spte->in_swap = false;
     }
 
   free (spte);
+  if (!held)
+    lock_release (&vm_global_lock);
   return true;
 }
 
@@ -145,12 +162,28 @@ load_segment_from_file (void *kframe_addr, struct spt_entry *spte)
 bool
 handle_mm_fault (struct spt_entry *spte)
 {
+  bool held = lock_held_by_current_thread (&vm_global_lock);
+  if (!held)
+    lock_acquire (&vm_global_lock);
+
   if (spte->in_memory)
-    return true;
+    {
+      if (!held)
+        lock_release (&vm_global_lock);
+      return true;
+    }
+
+  bool prev_pin = spte->is_pinned;
+  spte->is_pinned = true;
 
   struct frame_slot *new_frame = allocate_user_frame (PAL_USER);
   if (new_frame == NULL)
-    return false;
+    {
+      spte->is_pinned = prev_pin;
+      if (!held)
+        lock_release (&vm_global_lock);
+      return false;
+    }
 
   new_frame->spte = spte;
   bool load_ok = false;
@@ -159,11 +192,16 @@ handle_mm_fault (struct spt_entry *spte)
     {
     case PAGE_SOURCE_ELF:
     case PAGE_SOURCE_MMAP:
+      if (!held)
+        lock_release (&vm_global_lock);
       load_ok = load_segment_from_file (new_frame->kernel_vaddr, spte);
+      if (!held)
+        lock_acquire (&vm_global_lock);
       break;
 
     case PAGE_SOURCE_ANON:
       swap_read_page (spte->swap_index, new_frame->kernel_vaddr);
+      spte->in_swap = false;
       load_ok = true;
       break;
 
@@ -175,15 +213,25 @@ handle_mm_fault (struct spt_entry *spte)
   if (!load_ok)
     {
       release_user_frame (new_frame->kernel_vaddr);
+      spte->is_pinned = prev_pin;
+      if (!held)
+        lock_release (&vm_global_lock);
       return false;
     }
 
   if (!install_user_page (spte->user_vaddr, new_frame->kernel_vaddr, spte->is_writable))
     {
       release_user_frame (new_frame->kernel_vaddr);
+      spte->is_pinned = prev_pin;
+      if (!held)
+        lock_release (&vm_global_lock);
       return false;
     }
 
   spte->in_memory = true;
+  spte->is_pinned = prev_pin;
+
+  if (!held)
+    lock_release (&vm_global_lock);
   return true;
 }

@@ -33,6 +33,7 @@ struct spt_entry
 
     /* 스왑 디스크(Swap Disk) 위치 정보 */
     size_t swap_index;          /* 스왑 아웃되었을 때 저장된 스왑 슬롯 번호 */
+    bool in_swap;               /* 현재 스왑 디스크 슬롯을 실제로 점유 중인지 여부 */
 
     struct hash_elem spt_elem;  /* 프로세스별 보조 페이지 해시 테이블 연결 원소 */
     struct list_elem mmap_elem; /* 메모리 매핑 파일(mmap_desc) 소속 페이지 리스트 원소 */

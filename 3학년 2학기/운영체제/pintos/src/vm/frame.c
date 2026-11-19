@@ -14,7 +14,7 @@
 
 // ch3 구현 - 전역 물리 프레임 관리 리스트, 동기화 락 및 Clock 알고리즘 핸드 포인터
 static struct list global_frame_list;
-static struct lock frame_table_lock;
+struct lock vm_global_lock;
 static struct list_elem *clock_hand_ptr;
 
 static void *evict_and_alloc_frame (enum palloc_flags flags);
@@ -24,7 +24,7 @@ void
 frame_table_init (void)
 {
   list_init (&global_frame_list);
-  lock_init (&frame_table_lock);
+  lock_init (&vm_global_lock);
   clock_hand_ptr = NULL;
 }
 
@@ -53,7 +53,9 @@ allocate_user_frame (enum palloc_flags flags)
 {
   ASSERT ((flags & PAL_USER) != 0);
 
-  lock_acquire (&frame_table_lock);
+  bool held = lock_held_by_current_thread (&vm_global_lock);
+  if (!held)
+    lock_acquire (&vm_global_lock);
 
   void *kpage_addr = palloc_get_page (flags);
   while (kpage_addr == NULL)
@@ -65,7 +67,8 @@ allocate_user_frame (enum palloc_flags flags)
   if (f_slot == NULL)
     {
       palloc_free_page (kpage_addr);
-      lock_release (&frame_table_lock);
+      if (!held)
+        lock_release (&vm_global_lock);
       return NULL;
     }
 
@@ -75,7 +78,8 @@ allocate_user_frame (enum palloc_flags flags)
 
   list_push_back (&global_frame_list, &f_slot->clock_elem);
 
-  lock_release (&frame_table_lock);
+  if (!held)
+    lock_release (&vm_global_lock);
   return f_slot;
 }
 
@@ -83,7 +87,9 @@ allocate_user_frame (enum palloc_flags flags)
 void
 release_user_frame (void *kernel_vaddr)
 {
-  lock_acquire (&frame_table_lock);
+  bool held = lock_held_by_current_thread (&vm_global_lock);
+  if (!held)
+    lock_acquire (&vm_global_lock);
 
   struct list_elem *it;
   for (it = list_begin (&global_frame_list);
@@ -98,7 +104,8 @@ release_user_frame (void *kernel_vaddr)
         }
     }
 
-  lock_release (&frame_table_lock);
+  if (!held)
+    lock_release (&vm_global_lock);
 }
 
 // ch3 구현 - 프레임 리스트에서 슬롯을 제거하고 하드웨어 매핑 및 물리 페이지 반환 (락 보유 상태에서 호출)
@@ -140,8 +147,8 @@ evict_and_alloc_frame (enum palloc_flags flags)
       struct frame_slot *victim = list_entry (cand_elem, struct frame_slot, clock_elem);
       scanned++;
 
-      // 커널 I/O 중이거나 아직 연결 중인 프레임은 교체 대상에서 제외
-      if (victim->spte == NULL || victim->spte->is_pinned)
+      // 커널 I/O 중이거나 아직 연결/로딩 중인 프레임은 교체 대상에서 제외
+      if (victim->spte == NULL || victim->spte->is_pinned || !victim->spte->in_memory)
         continue;
 
       struct thread *owner = victim->owner_thread;
@@ -154,8 +161,11 @@ evict_and_alloc_frame (enum palloc_flags flags)
           continue;
         }
 
-      // Victim 선정 완료: Dirty 상태이거나 익명(스택/스왑) 페이지면 스왑 디스크 또는 매핑 파일에 기록
+      // Victim 선정 완료: 스왑 아웃 도중 소유자 스레드가 해당 페이지에 계속 쓰는 것을 방지하기 위해 먼저 PTE 매핑을 해제!
       bool is_dirty = pagedir_is_dirty (owner->pagedir, uaddr);
+      pagedir_clear_page (owner->pagedir, uaddr);
+      victim->spte->in_memory = false;
+
       if (victim->spte->page_type == PAGE_SOURCE_MMAP)
         {
           if (is_dirty)
@@ -173,9 +183,9 @@ evict_and_alloc_frame (enum palloc_flags flags)
         {
           victim->spte->page_type = PAGE_SOURCE_ANON;
           victim->spte->swap_index = swap_write_page (victim->kernel_vaddr);
+          victim->spte->in_swap = true;
         }
 
-      victim->spte->in_memory = false;
       __release_user_frame (victim);
 
       return palloc_get_page (flags);
